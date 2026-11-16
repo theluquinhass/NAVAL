@@ -1,4 +1,4 @@
-export function LandingPage() {
+export default function LandingPage() {
     return (
         <h1>
             Wellcome ao NAVAL!!!
