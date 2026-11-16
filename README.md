@@ -8,11 +8,9 @@ O objetivo é oferecer uma solução moderna, intuitiva e acessível para pequen
 
 > 🚧 **Status:** Em desenvolvimento.
 
----
-
 ## 🎯 Objetivo do projeto
 
-O NAVAL nasce com a proposta de resolver problemas comuns na rotina de barbearias, como:
+O NAVAL busca resolver problemas comuns na rotina de barbearias:
 
 - Agendamentos controlados manualmente.
 - Conflitos de horários.
@@ -60,24 +58,24 @@ O projeto terá inicialmente foco em barbearias de Parelhas/RN e região, buscan
 - Axios
 - CSS / Tailwind CSS
 
-### Backend
+### Backend e serviços
 - Node.js
 - Express
 - API REST
-- Mongoose
-- JWT (autenticação)
+- Supabase Auth
 
 ### Banco de dados
-- MongoDB Atlas
+- Supabase
+- PostgreSQL
 
-### Ferramentas e infraestrutura
+### Infraestrutura
 - Git e GitHub
 - Docker
 - Docker Compose
 
 ## 🏗️ Arquitetura
 
-O projeto será desenvolvido em um único repositório, separado em frontend e backend.
+O projeto será organizado em um único repositório, separado em frontend e backend.
 
 ```text
 NAVAL/
@@ -87,7 +85,6 @@ NAVAL/
 │       ├── config/
 │       ├── controllers/
 │       ├── middlewares/
-│       ├── models/
 │       ├── routes/
 │       ├── services/
 │       └── server.js
@@ -99,6 +96,7 @@ NAVAL/
 │       ├── services/
 │       ├── contexts/
 │       ├── hooks/
+│       ├── lib/
 │       └── App.jsx
 │
 ├── docker-compose.yml
@@ -110,32 +108,30 @@ NAVAL/
 
 O NAVAL utilizará uma arquitetura multi-tenant, permitindo que diferentes barbearias utilizem a mesma aplicação.
 
-Cada estabelecimento terá seus próprios dados, incluindo:
+Cada estabelecimento terá seus próprios:
 
-- Usuários.
+- Usuários autorizados.
 - Profissionais.
 - Serviços.
 - Clientes.
 - Agendamentos.
 - Configurações.
 
-O isolamento será garantido por meio de referências aos estabelecimentos (`barbershopId`) e validações de autorização no backend.
+O isolamento será implementado utilizando referências aos estabelecimentos (`barbershop_id`) e políticas de segurança do PostgreSQL, especialmente Row Level Security (RLS).
 
 ## 💰 Modelo de negócio
 
 O NAVAL será comercializado no modelo SaaS, com assinatura mensal recorrente.
 
-**Plano inicial proposto:**
-
 | Plano | Valor |
 |---|---:|
 | NAVAL Essencial | R$ 29,90/mês |
 
-A estratégia inicial será oferecer um período de testes para os primeiros estabelecimentos parceiros, coletar feedback e validar a solução antes de implementar a cobrança recorrente.
+A estratégia inicial será oferecer um período de testes aos primeiros estabelecimentos parceiros, coletar feedback e validar a solução antes de implementar a cobrança recorrente.
 
 ## 🎨 Identidade visual
 
-A identidade visual seguirá o conceito **Dark Premium**:
+Direção visual **Dark Premium**:
 
 - Preto e grafite como cores predominantes.
 - Detalhes em dourado.
@@ -146,8 +142,8 @@ A identidade visual seguirá o conceito **Dark Premium**:
 
 ## 🚀 Etapas de desenvolvimento
 
-1. **Fundação:** estruturação do projeto, configuração do backend, frontend e banco de dados.
-2. **Autenticação:** cadastro, login, JWT e autorização.
+1. **Fundação:** estruturação do projeto, configuração do frontend e integração com Supabase.
+2. **Autenticação:** cadastro, login e controle de permissões.
 3. **Gestão:** profissionais, serviços e horários.
 4. **Agendamentos:** página pública e sistema de reservas.
 5. **Painel administrativo:** dashboard, calendário e clientes.
@@ -156,14 +152,13 @@ A identidade visual seguirá o conceito **Dark Premium**:
 
 ## 🔒 Segurança
 
-O desenvolvimento seguirá boas práticas de segurança:
-
 - Variáveis de ambiente para credenciais.
-- Senhas armazenadas com hash.
-- Autenticação e autorização.
-- Validação de dados no backend.
+- Supabase Auth para autenticação.
+- Row Level Security (RLS).
+- Validação de dados.
+- Controle de permissões.
+- Proteção dos dados de cada estabelecimento.
 - Tratamento adequado de erros.
-- Isolamento dos dados de cada estabelecimento.
 
 ## 📌 Propósito
 
