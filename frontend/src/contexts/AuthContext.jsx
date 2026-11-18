@@ -3,15 +3,15 @@ import { supabase } from "../lib/supabase";
 
 const AuthContext = createContext()
 
-export function AuthProvider ({ children }) {
+export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [session, setSession] = useState(null)
     const [loading, setLoading] = useState(true)
-    
+
     useEffect(() => {
         const setData = async () => {
             try {
-                const { data: { session }, error} = await supabase.auth.getSession()
+                const { data: { session }, error } = await supabase.auth.getSession()
                 if (error) throw error
                 setSession(session)
                 setUser(session?.user ?? null)
@@ -19,13 +19,13 @@ export function AuthProvider ({ children }) {
                 console.error("Erro ao buscar sessao", error.message)
                 setSession(null)
                 setUser(null)
-            }finally {
+            } finally {
                 setLoading(false)
             }
         }
-    
 
-        const { data: listener} = supabase.auth.onAuthStateChange((_event, session) => {
+
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session)
             setUser(session?.user ?? null)
             setLoading(false)
@@ -37,7 +37,7 @@ export function AuthProvider ({ children }) {
             listener.subscription.unsubscribe()
         }
     }, [])
-    
+
     const value = {
         session,
         user,
