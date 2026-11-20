@@ -23,8 +23,12 @@ export default function Dashboard() {
 
     return (
         <main>
-            <p>Ola, {profile && <p>{ profile.user.email }</p>}</p>
-            {profile && <p>{profile.message}</p>}
+            {profile && (
+                <>
+                    <h1>Ola, {profile.profile?.name || 'Barbeiro'}!</h1>
+                    <p>Slug: {profile.profile?.slug || 'Perfil nao cadastrado'}</p>
+                </>
+            )}
             <button onClick={signOut}>Sair</button>
         </main>
     )

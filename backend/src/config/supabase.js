@@ -7,3 +7,13 @@ const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
+export const createUserClient = (token) => {
+    return createClient(supabaseUrl,supabaseKey, {
+        global: {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        }
+    })
+}
+

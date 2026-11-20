@@ -18,6 +18,8 @@ const authMiddleware = async (req, res, next) => {
             })
         }
         req.user = data.user
+        req.accessToken = jwt
+        
         next()
     } catch (error) {
         return res.status(500).json({

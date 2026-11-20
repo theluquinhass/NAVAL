@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
                 if (error) throw error
                 setSession(session)
                 setUser(session?.user ?? null)
+                console.log(session)
             } catch (error) {
                 console.error("Erro ao buscar sessao", error.message)
                 setSession(null)
