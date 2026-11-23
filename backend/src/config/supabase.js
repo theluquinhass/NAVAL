@@ -17,3 +17,5 @@ export const createUserClient = (token) => {
     })
 }
 
+export const createPublicClient = () => createClient(supabaseUrl, supabaseKey)
+

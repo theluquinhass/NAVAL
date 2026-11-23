@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
 import Services from './Services.jsx'
+import WorkingHours from './WorkingHours.jsx'
 
 export default function Dashboard() {
     const { signOut, loading } = useAuth()
@@ -31,6 +32,7 @@ export default function Dashboard() {
                 </>
             )}
             <Services />
+            <WorkingHours />
             <button onClick={signOut}>Sair</button>
         </main>
     )

@@ -5,6 +5,8 @@ import { createUserClient } from './config/supabase.js'
 import authMiddleware from './middlewares/authMiddleware.js'
 import barbershopRoutes from './routes/barbershopRoutes.js'
 import serviceRoutes from './routes/serviceRoutes.js'
+import schedulingRoutes from './routes/schedulingRoutes.js'
+import publicBookingRoutes from './routes/publicBookingRoutes.js'
 
 const app = express()
 
@@ -13,8 +15,10 @@ app.use(cors({
 }))
 
 app.use(express.json())
+app.use(publicBookingRoutes)
 app.use(authMiddleware, barbershopRoutes)
 app.use(authMiddleware, serviceRoutes)
+app.use(authMiddleware, schedulingRoutes)
 
 app.get('/profile', authMiddleware, async (req, res) => {
     const supabase = createUserClient(req.accessToken)

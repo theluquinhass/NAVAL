@@ -8,6 +8,7 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import GuestRoute from './routes/GuestRoute'
 import ProfileRoute from './routes/ProfileRoute'
 import SetupRoute from './routes/SetupRoute'
+import Booking from './pages/Booking'
 
 import { Routes, Route } from 'react-router-dom'
 
@@ -18,6 +19,7 @@ function App() {
       <Route path='/register' element={<GuestRoute> <Register /> </GuestRoute>} />
       <Route path='/login' element={<GuestRoute> <Login /> </GuestRoute>} />
       <Route path='/checkout' element={<Checkout />} />
+      <Route path='/book/:slug' element={<Booking />} />
       <Route path='/setup' element={<ProtectedRoute><SetupRoute><Setup /></SetupRoute></ProtectedRoute>} />
       <Route path='/dashboard' element={<ProtectedRoute><ProfileRoute><Dashboard /></ProfileRoute></ProtectedRoute>} />
     </Routes>
