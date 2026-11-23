@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import api from "../../services/api"
+import Services from './Services.jsx'
 
 export default function Dashboard() {
     const { signOut, loading } = useAuth()
@@ -29,6 +30,7 @@ export default function Dashboard() {
                     <p>Slug: {profile.profile?.slug || 'Perfil nao cadastrado'}</p>
                 </>
             )}
+            <Services />
             <button onClick={signOut}>Sair</button>
         </main>
     )

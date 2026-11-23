@@ -7,6 +7,7 @@ import Setup from './pages/Setup'
 import ProtectedRoute from './routes/ProtectedRoute'
 import GuestRoute from './routes/GuestRoute'
 import ProfileRoute from './routes/ProfileRoute'
+import SetupRoute from './routes/SetupRoute'
 
 import { Routes, Route } from 'react-router-dom'
 
@@ -17,7 +18,7 @@ function App() {
       <Route path='/register' element={<GuestRoute> <Register /> </GuestRoute>} />
       <Route path='/login' element={<GuestRoute> <Login /> </GuestRoute>} />
       <Route path='/checkout' element={<Checkout />} />
-      <Route path='/setup' element={ <ProtectedRoute> <Setup/> </ProtectedRoute> }/>
+      <Route path='/setup' element={<ProtectedRoute><SetupRoute><Setup /></SetupRoute></ProtectedRoute>} />
       <Route path='/dashboard' element={<ProtectedRoute><ProfileRoute><Dashboard /></ProfileRoute></ProtectedRoute>} />
     </Routes>
   )
