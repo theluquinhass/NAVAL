@@ -5,14 +5,6 @@ const TIME_ZONE = 'America/Fortaleza'
 const HOURS_TABLE = 'barbershop_working_hours'
 const APPOINTMENTS_TABLE = 'appointments'
 
-function localStartOfDay(date) {
-    return new Date(`${date}T00:00:00-03:00`)
-}
-
-function localEndOfDay(date) {
-    return new Date(`${date}T23:59:59.999-03:00`)
-}
-
 function localDateTimeToIso(date, time) {
     return new Date(`${date}T${time}-03:00`).toISOString()
 }
@@ -76,12 +68,9 @@ export async function getPublicBookingData(slug, date, serviceId) {
     const hoursForDay = hours.find((item) => item.day_of_week === dateDayOfWeek(date))
     if (!service || !hoursForDay) return { barbershop, services, slots: [] }
 
-    const from = localStartOfDay(date)
-    const to = localEndOfDay(date)
     const { data: busyTimes, error: busyError } = await supabase.rpc('get_public_busy_times', {
-        p_profile_id: barbershop.id,
-        p_from: from.toISOString(),
-        p_to: to.toISOString()
+        p_slug: slug,
+        p_date: date
     })
     if (busyError) throw new Error('PUBLIC_AVAILABILITY_FAILED', { cause: busyError })
 

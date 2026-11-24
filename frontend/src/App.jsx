@@ -9,19 +9,20 @@ import GuestRoute from './routes/GuestRoute'
 import ProfileRoute from './routes/ProfileRoute'
 import SetupRoute from './routes/SetupRoute'
 import Booking from './pages/Booking'
+import DashboardLayout from './layouts/DashboardLayout.jsx'
 
 import { Routes, Route } from 'react-router-dom'
 
 function App() {
   return (
     <Routes>
-      <Route path='/' element={<LandingPage />} />
+      <Route path='/' element={<GuestRoute><LandingPage /></GuestRoute>} />
       <Route path='/register' element={<GuestRoute> <Register /> </GuestRoute>} />
       <Route path='/login' element={<GuestRoute> <Login /> </GuestRoute>} />
       <Route path='/checkout' element={<Checkout />} />
       <Route path='/book/:slug' element={<Booking />} />
       <Route path='/setup' element={<ProtectedRoute><SetupRoute><Setup /></SetupRoute></ProtectedRoute>} />
-      <Route path='/dashboard' element={<ProtectedRoute><ProfileRoute><Dashboard /></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Dashboard /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
     </Routes>
   )
 }
