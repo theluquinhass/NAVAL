@@ -1,10 +1,12 @@
 import { after, before, mock, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { clearProfileCache } from '../src/services/barbershopService.js'
+import { weekdayIndexForDate } from '../src/services/workingHoursRules.js'
 
 const calls = []
 let barbershopResult
 let serviceResult
+let workingHoursResult
 let insertResult
 let insertedAppointment
 
@@ -41,6 +43,16 @@ const supabase = {
             eq(column, value) {
                 call.filters.push([column, value])
                 return this
+            },
+            order(column) {
+                call.order = column
+                return this
+            },
+            then(resolve, reject) {
+                const result = table === 'barbershop_working_hours'
+                    ? workingHoursResult
+                    : { data: [], error: null }
+                return Promise.resolve(result).then(resolve, reject)
             },
             maybeSingle() {
                 let result = table === 'barbershops' ? barbershopResult : serviceResult
@@ -83,6 +95,7 @@ function reset() {
     clearProfileCache()
     barbershopResult = { data: barbershop, error: null }
     serviceResult = { data: service, error: null }
+    workingHoursResult = { data: [{ opens_at: '09:00:00', closes_at: '12:00:00' }], error: null }
     insertResult = { data: createdAppointment, error: null }
     insertedAppointment = null
 }
@@ -97,7 +110,13 @@ test('creates a private appointment with the authenticated Supabase client', asy
     assert.equal(calls[0].filters[0][1], 'user-1')
     assert.equal(calls[1].table, 'services')
     assert.deepEqual(calls[1].filters, [['id', payload.serviceId], ['profile_id', barbershop.id]])
-    assert.equal(calls[2].table, 'appointments')
+    assert.equal(calls[2].table, 'barbershop_working_hours')
+    assert.deepEqual(calls[2].filters, [
+        ['profile_id', barbershop.id],
+        ['day_of_week', weekdayIndexForDate(payload.startsAt)]
+    ])
+    assert.equal(calls[2].order, 'period_index')
+    assert.equal(calls[3].table, 'appointments')
 })
 
 test('rejects a user without a registered barbershop', async () => {
@@ -185,4 +204,46 @@ test('inserts the server-resolved profile, trusted service data, and confirmed s
     assert.deepEqual(Object.keys(insertedAppointment).sort(), [
         'customer_name', 'customer_phone', 'ends_at', 'profile_id', 'service_id', 'starts_at', 'status'
     ])
+})
+
+test('rejects a private appointment outside the configured periods', async () => {
+    reset()
+    workingHoursResult = { data: [{ opens_at: '13:00:00', closes_at: '14:00:00' }], error: null }
+
+    await assert.rejects(createPrivateAppointment(supabase, 'user-1', payload), { message: 'SLOT_UNAVAILABLE' })
+    assert.equal(calls.some((call) => call.table === 'appointments'), false)
+})
+
+test('rejects a private appointment that crosses the gap between periods', async () => {
+    reset()
+    workingHoursResult = {
+        data: [
+            { opens_at: '09:00:00', closes_at: '10:30:00' },
+            { opens_at: '11:00:00', closes_at: '12:00:00' }
+        ],
+        error: null
+    }
+
+    await assert.rejects(createPrivateAppointment(supabase, 'user-1', payload), { message: 'SLOT_UNAVAILABLE' })
+    assert.equal(calls.some((call) => call.table === 'appointments'), false)
+})
+
+test('rejects a past private appointment before reading working hours', async () => {
+    reset()
+    const pastPayload = { ...payload, startsAt: new Date(Date.now() - 3_600_000).toISOString() }
+
+    await assert.rejects(createPrivateAppointment(supabase, 'user-1', pastPayload), { message: 'SLOT_UNAVAILABLE' })
+    assert.equal(calls.some((call) => call.table === 'barbershop_working_hours'), false)
+})
+
+test('preserves the cause when the working hours lookup fails', async () => {
+    reset()
+    const queryError = { code: '42501', message: 'working hours lookup denied' }
+    workingHoursResult = { data: null, error: queryError }
+
+    await assert.rejects(createPrivateAppointment(supabase, 'user-1', payload), (error) => {
+        assert.equal(error.message, 'WORKING_HOURS_READ_FAILED')
+        assert.equal(error.cause, queryError)
+        return true
+    })
 })

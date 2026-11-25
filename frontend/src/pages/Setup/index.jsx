@@ -1,85 +1,128 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api.js'
+import { getErrorMessage } from '../../utils/errorMessage.js'
+import { normalizeSlug } from '../../utils/slug.js'
+import '../../styles/auth.css'
 
 export default function Setup() {
     const navigate = useNavigate()
 
+    const [barberName, setBarberName] = useState('')
     const [name, setName] = useState('')
     const [phone, setPhone] = useState('')
     const [slug, setSlug] = useState('')
-    const [message, setMessage] = useState('')
+    const [error, setError] = useState('')
     const [saving, setSaving] = useState(false)
 
-    function generateSlug(name) {
-        return name
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '')
-    }
+    const slugPreview = normalizeSlug(slug || name)
+    const publicUrl = `${window.location.origin}/book/${slugPreview || 'sua-barbearia'}`
 
     async function handleSubmit(event) {
         event.preventDefault()
-        setMessage('')
+        setError('')
         setSaving(true)
 
         try {
             await api.post('/profile', {
+                barberName: barberName.trim(),
                 name: name.trim(),
                 phone: phone.trim(),
-                slug: generateSlug(slug || name)
+                slug: normalizeSlug(slug || name)
             })
             navigate('/dashboard')
-        } catch (error) {
-            setMessage(error || 'Não foi possível salvar o perfil.')
+        } catch (requestError) {
+            setError(getErrorMessage(requestError, 'Não foi possível salvar o perfil. Tente novamente.'))
         } finally {
             setSaving(false)
         }
     }
 
-
     return (
-        <main>
-            <h1>Configure Seu Perfil:</h1>
-            {message && <p role='status'>{message}</p>}
-            <form onSubmit={handleSubmit}>
+        <main className="auth-page">
+            <section className="auth-card auth-card--wide">
+                <div className="auth-card__brand">
+                    <span className="auth-card__mark" aria-hidden="true">N</span>
+                    <span className="auth-card__eyebrow">NAVAL</span>
+                </div>
 
-                <input
-                    type='text'
-                    value={name}
-                    onChange={(event) => {
-                        const value = event.target.value
-                        setName(value)
-                        if (!slug || slug === generateSlug(name)) setSlug(generateSlug(value))
-                    }}
-                    required
-                    placeholder='Nome da Barbearia'
-                />
+                <h1>Configure sua barbearia</h1>
+                <p className="auth-card__subtitle">Esses dados aparecem na página pública onde seus clientes vão agendar.</p>
 
-                <input
-                    type='tel'
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                    required
-                    placeholder='Telefone'
-                />
+                <form className="auth-form" onSubmit={handleSubmit}>
+                    {error && <p className="auth-feedback auth-feedback--error" role="alert">{error}</p>}
 
-                <input
-                    type='text'
-                    value={slug}
-                    onChange={(event) => setSlug(event.target.value)}
-                    required
-                    placeholder='Endereço do perfil'
-                />
+                    <div className="auth-field">
+                        <label htmlFor="setup-barber-name">Nome do barbeiro</label>
+                        <input
+                            id="setup-barber-name"
+                            type="text"
+                            value={barberName}
+                            onChange={(event) => { setBarberName(event.target.value); setError('') }}
+                            autoComplete="name"
+                            placeholder="Ex.: Lucas Caetano"
+                            required
+                        />
+                    </div>
 
-                <button type='submit'>
-                    {saving ? 'Salvando...' : 'Salvar Perfil'}
-                </button>
+                    <div className="auth-field">
+                        <label htmlFor="setup-name">Nome da barbearia</label>
+                        <input
+                            id="setup-name"
+                            type="text"
+                            value={name}
+                            onChange={(event) => {
+                                const value = event.target.value
+                                setName(value)
+                                if (!slug || slug === normalizeSlug(name)) setSlug(normalizeSlug(value))
+                                setError('')
+                            }}
+                            autoComplete="organization"
+                            placeholder="Ex.: Barbearia do Zé"
+                            required
+                        />
+                    </div>
 
-            </form>
+                    <div className="auth-field">
+                        <label htmlFor="setup-phone">Telefone</label>
+                        <input
+                            id="setup-phone"
+                            type="tel"
+                            value={phone}
+                            onChange={(event) => { setPhone(event.target.value); setError('') }}
+                            autoComplete="tel"
+                            placeholder="(85) 99999-1234"
+                            required
+                        />
+                    </div>
+
+                    <div className="auth-field">
+                        <label htmlFor="setup-slug">Endereço do perfil</label>
+                        <input
+                            id="setup-slug"
+                            type="text"
+                            value={slug}
+                            onChange={(event) => { setSlug(event.target.value); setError('') }}
+                            onBlur={() => setSlug(normalizeSlug(slug))}
+                            placeholder="barbearia-do-ze"
+                            required
+                        />
+                    </div>
+
+                    <div className="auth-preview">
+                        <span>Link público da sua barbearia</span>
+                        <code>{publicUrl}</code>
+                    </div>
+
+                    <button className="auth-submit" type="submit" disabled={saving}>
+                        {saving ? 'Salvando...' : 'Salvar perfil'}
+                    </button>
+                </form>
+
+                <div className="auth-links">
+                    <span>Você poderá editar esses dados depois em Configurações.</span>
+                </div>
+            </section>
         </main>
     )
 }

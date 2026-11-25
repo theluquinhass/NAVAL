@@ -4,7 +4,38 @@ import '../management.css'
 import './workingHours.css'
 
 const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
+const WEEKDAY_INDICES = [1, 2, 3, 4, 5]
+const ALL_DAY_INDICES = weekdays.map((_, index) => index)
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+
+function formatTimeInput(value) {
+    const digits = String(value).replace(/\D/g, '').slice(0, 4)
+    return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
+}
+
+function completeTime(value) {
+    const digits = String(value).replace(/\D/g, '').slice(0, 4)
+    if (digits.length === 0) return ''
+    return `${digits.slice(0, 2).padStart(2, '0')}:${digits.slice(2).padEnd(2, '0')}`
+}
+
+function dayTotalMinutes(day) {
+    if (!day.enabled) return 0
+    return day.periods.reduce((total, period) => {
+        if (!TIME_PATTERN.test(period.opens_at) || !TIME_PATTERN.test(period.closes_at)) return total
+        const [openHour, openMinute] = period.opens_at.split(':').map(Number)
+        const [closeHour, closeMinute] = period.closes_at.split(':').map(Number)
+        const minutes = (closeHour * 60 + closeMinute) - (openHour * 60 + openMinute)
+        return minutes > 0 ? total + minutes : total
+    }, 0)
+}
+
+function formatDuration(minutes) {
+    const hours = Math.floor(minutes / 60)
+    const remainder = minutes % 60
+    if (hours === 0) return `${remainder}min`
+    return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}min`
+}
 
 function createEmptyWeek() {
     return weekdays.map((_, day_of_week) => ({ day_of_week, enabled: false, periods: [] }))
@@ -113,6 +144,51 @@ export default function WorkingHours() {
         })
     }
 
+    function clearAllFeedback() {
+        setSaveError('')
+        setMessage('')
+        setConflicts(null)
+        setValidationErrors({})
+    }
+
+    function copySchedule(sourceDay, targetDays) {
+        setDays((current) => {
+            const source = current.find((day) => day.day_of_week === sourceDay)
+            if (!source) return current
+            const schedule = {
+                enabled: source.enabled,
+                periods: source.periods.map((period) => ({ ...period }))
+            }
+            return current.map((day) => (
+                targetDays.includes(day.day_of_week) ? { ...day, ...schedule } : day
+            ))
+        })
+        clearAllFeedback()
+    }
+
+    function closeDay(dayIndex) {
+        setDays((current) => current.map((day) => (
+            day.day_of_week === dayIndex ? { ...day, enabled: false, periods: [] } : day
+        )))
+        clearAllFeedback()
+    }
+
+    function updateTime(dayIndex, periodIndex, field, value) {
+        updatePeriod(dayIndex, periodIndex, { [field]: formatTimeInput(value) })
+    }
+
+    function normalizeTime(dayIndex, periodIndex, field) {
+        setDays((current) => current.map((day) => day.day_of_week === dayIndex
+            ? {
+                ...day,
+                periods: day.periods.map((period, index) => index === periodIndex
+                    ? { ...period, [field]: completeTime(period[field]) }
+                    : period)
+            }
+            : day
+        ))
+    }
+
     function updateDay(dayIndex, changes) {
         setDays((current) => current.map((day) => {
             if (day.day_of_week !== dayIndex) return day
@@ -198,6 +274,9 @@ export default function WorkingHours() {
         setReloadToken((current) => current + 1)
     }
 
+    const openDays = days.filter((day) => day.enabled).length
+    const totalMinutes = days.reduce((total, day) => total + dayTotalMinutes(day), 0)
+
     return (
         <main className="dashboard-management working-hours-page">
             <header className="dashboard-management__header">
@@ -223,6 +302,7 @@ export default function WorkingHours() {
                         <div>
                             <h2>Semana de atendimento</h2>
                             <p>Configure um ou mais períodos por dia. Os intervalos entre eles ficam indisponíveis.</p>
+                            <p className="working-hours__summary">{openDays} {openDays === 1 ? 'dia aberto' : 'dias abertos'} · {formatDuration(totalMinutes)} semanais</p>
                         </div>
                         <span className="working-hours__format">24 horas</span>
                     </div>
@@ -235,15 +315,20 @@ export default function WorkingHours() {
                         {days.map((day) => (
                             <fieldset className={`working-hours__day${day.enabled ? ' working-hours__day--open' : ''}`} key={day.day_of_week}>
                                 <legend>{weekdays[day.day_of_week]}</legend>
-                                <label className="working-hours__toggle" htmlFor={`working-day-${day.day_of_week}`}>
-                                    <input
-                                        id={`working-day-${day.day_of_week}`}
-                                        type="checkbox"
-                                        checked={day.enabled}
-                                        onChange={(event) => updateDay(day.day_of_week, { enabled: event.target.checked })}
-                                    />
-                                    <span>Aberto</span>
-                                </label>
+                                <div className="working-hours__day-status">
+                                    <label className="working-hours__toggle" htmlFor={`working-day-${day.day_of_week}`}>
+                                        <input
+                                            id={`working-day-${day.day_of_week}`}
+                                            type="checkbox"
+                                            checked={day.enabled}
+                                            onChange={(event) => updateDay(day.day_of_week, { enabled: event.target.checked })}
+                                        />
+                                        <span>Aberto</span>
+                                    </label>
+                                    <span className="working-hours__day-total">
+                                        {day.enabled ? formatDuration(dayTotalMinutes(day)) : 'Fechado'}
+                                    </span>
+                                </div>
 
                                 {day.enabled ? (
                                     <div className="working-hours__periods">
@@ -264,7 +349,8 @@ export default function WorkingHours() {
                                                         placeholder="09:00"
                                                         aria-label={`${weekdays[day.day_of_week]}, período ${periodIndex + 1}, horário de início`}
                                                         value={period.opens_at}
-                                                        onChange={(event) => updatePeriod(day.day_of_week, periodIndex, { opens_at: event.target.value })}
+                                                        onChange={(event) => updateTime(day.day_of_week, periodIndex, 'opens_at', event.target.value)}
+                                                        onBlur={() => normalizeTime(day.day_of_week, periodIndex, 'opens_at')}
                                                     />
                                                 </label>
                                                 <label className="working-hours__time" htmlFor={`working-close-${day.day_of_week}-${periodIndex}`}>
@@ -278,7 +364,8 @@ export default function WorkingHours() {
                                                         placeholder="12:00"
                                                         aria-label={`${weekdays[day.day_of_week]}, período ${periodIndex + 1}, horário de término`}
                                                         value={period.closes_at}
-                                                        onChange={(event) => updatePeriod(day.day_of_week, periodIndex, { closes_at: event.target.value })}
+                                                        onChange={(event) => updateTime(day.day_of_week, periodIndex, 'closes_at', event.target.value)}
+                                                        onBlur={() => normalizeTime(day.day_of_week, periodIndex, 'closes_at')}
                                                     />
                                                 </label>
                                                 <button
@@ -297,6 +384,32 @@ export default function WorkingHours() {
                                         <button className="working-hours__add" type="button" onClick={() => addPeriod(day.day_of_week)}>
                                             <span aria-hidden="true">+</span> Adicionar período
                                         </button>
+                                        <div className="working-hours__quick-actions" aria-label={`Ações rápidas para ${weekdays[day.day_of_week]}`}>
+                                            <button
+                                                className="working-hours__quick"
+                                                type="button"
+                                                onClick={() => copySchedule(day.day_of_week, WEEKDAY_INDICES)}
+                                                aria-label={`Copiar horário de ${weekdays[day.day_of_week]} para segunda a sexta`}
+                                            >
+                                                Copiar para seg–sex
+                                            </button>
+                                            <button
+                                                className="working-hours__quick"
+                                                type="button"
+                                                onClick={() => copySchedule(day.day_of_week, ALL_DAY_INDICES)}
+                                                aria-label={`Copiar horário de ${weekdays[day.day_of_week]} para todos os dias`}
+                                            >
+                                                Copiar para todos
+                                            </button>
+                                            <button
+                                                className="working-hours__quick working-hours__quick--close"
+                                                type="button"
+                                                onClick={() => closeDay(day.day_of_week)}
+                                                aria-label={`Fechar ${weekdays[day.day_of_week]}`}
+                                            >
+                                                Fechar dia
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="working-hours__closed" aria-label={`${weekdays[day.day_of_week]} fechado`}>Fechado</p>
@@ -315,7 +428,7 @@ export default function WorkingHours() {
                     {conflicts && (
                         <section className="working-hours__conflicts" aria-labelledby="working-hours-conflicts-title" role="alert">
                             <h3 id="working-hours-conflicts-title">Revise os agendamentos afetados</h3>
-                            <p>{conflicts.total} {conflicts.total === 1 ? 'agendamento confirmado ficará' : 'agendamentos confirmados ficarão'} fora dos novos períodos. Salvar não altera nem cancela essas reservas.</p>
+                            <p>{conflicts.total} {conflicts.total === 1 ? 'agendamento confirmado ficará' : 'agendamentos confirmados ficarão'} fora dos novos períodos. Salvar não altera nem cancela essas reservas; novos agendamentos passarão a respeitar a grade salva.</p>
                             {conflicts.items.length > 0 && (
                                 <ul>
                                     {conflicts.items.map((appointment) => (

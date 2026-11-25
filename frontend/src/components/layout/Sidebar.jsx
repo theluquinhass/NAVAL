@@ -21,8 +21,8 @@ const groups = [
         { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' }
     ] },
     { title: 'Sistema', items: [
-        { label: 'Meu negócio', icon: 'business' },
-        { label: 'Configurações', icon: 'settings' }
+        { label: 'Meu negócio', icon: 'business', to: '/dashboard/business' },
+        { label: 'Configurações', icon: 'settings', to: '/dashboard/settings' }
     ] }
 ]
 

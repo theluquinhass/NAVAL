@@ -52,9 +52,31 @@ export async function getBarbershopIdForUser(token, userId) {
 export function findProfileForUser(supabase, userId) {
     return supabase
         .from(TABLE)
-        .select('id, name, slug')
+        .select('id, name, barberName:barber_name, slug, phone')
         .eq('user_id', userId)
         .maybeSingle()
+}
+
+export async function updateProfileForUser(supabase, userId, payload) {
+    const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
+    const { data, error } = await supabase
+        .from(TABLE)
+        .update({
+            barber_name: payload.barberName,
+            name: payload.name,
+            phone: payload.phone,
+            slug: payload.slug
+        })
+        .eq('id', profileId)
+        .eq('user_id', userId)
+        .select('id, name, barberName:barber_name, slug, phone')
+        .maybeSingle()
+
+    if (error) throw new Error('PROFILE_UPDATE_FAILED', { cause: error })
+    if (!data) throw new Error('BARBERSHOP_NOT_FOUND')
+
+    profileCache.delete(userId)
+    return data
 }
 
 export async function getBarbershopIdForAuthenticatedUser(supabase, userId) {

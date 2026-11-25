@@ -91,7 +91,8 @@ export default function Dashboard() {
     if (authLoading) return <p className="dashboard-loading">Carregando dashboard...</p>
 
     const { hour } = partsInFortaleza(new Date())
-    const profileName = profile?.name || 'Barbeiro'
+    const profileName = profile?.barberName || profile?.name || 'Barbeiro'
+    const barbershopName = profile?.name || 'sua barbearia'
     const greeting = Number(hour) < 12 ? 'Bom dia' : Number(hour) < 18 ? 'Boa tarde' : 'Boa noite'
     const confirmed = appointments.filter((appointment) => appointment.status === 'confirmed')
     const cancelled = appointments.filter((appointment) => appointment.status === 'cancelled')
@@ -113,7 +114,7 @@ export default function Dashboard() {
                 <div>
                     <p className="dashboard-eyebrow">{formatDate(new Date())}</p>
                     <h1>{greeting}, {profileName}</h1>
-                    <p className="dashboard-welcome__copy">Aqui está o resumo do movimento da sua barbearia hoje.</p>
+                    <p className="dashboard-welcome__copy">Aqui está o resumo do movimento da {barbershopName} hoje.</p>
                 </div>
             </header>
 

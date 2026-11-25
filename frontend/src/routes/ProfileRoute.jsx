@@ -36,7 +36,7 @@ const ProfileRoute = ({ children }) => {
         return <Navigate to="/setup" replace />
     }
 
-    return <ProfileProvider value={profile}>{children}</ProfileProvider>
+    return <ProfileProvider profile={profile}>{children}</ProfileProvider>
 }
 
 export default ProfileRoute

@@ -2,11 +2,42 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import DatePicker from '../../components/DatePicker.jsx'
 import { createAppointment, getPublicAvailability } from '../../services/schedulingApi.js'
+import { getErrorMessage } from '../../utils/errorMessage.js'
+import './booking.css'
+
+const TIME_ZONE = 'America/Fortaleza'
 
 function localDate() {
-    const now = new Date()
-    const offset = now.getTimezoneOffset() * 60_000
-    return new Date(now.getTime() - offset).toISOString().slice(0, 10)
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date())
+}
+
+function formatTime(value) {
+    if (!value) return '--:--'
+    return new Date(value).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: TIME_ZONE
+    })
+}
+
+function formatDate(value) {
+    if (!value) return 'Data não selecionada'
+    return new Date(`${value}T12:00:00-03:00`).toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        timeZone: TIME_ZONE
+    })
+}
+
+function formatPrice(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0)
 }
 
 export default function Booking() {
@@ -21,7 +52,9 @@ export default function Booking() {
     const [loading, setLoading] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
-    const [message, setMessage] = useState('')
+    const [confirmation, setConfirmation] = useState(null)
+
+    const selectedService = data?.services?.find((service) => service.id === serviceId)
 
     useEffect(() => {
         let active = true
@@ -33,7 +66,7 @@ export default function Booking() {
             })
             .catch((requestError) => {
                 if (!active) return
-                setError(requestError.response?.data?.error || requestError.message)
+                setError(getErrorMessage(requestError, 'Não foi possível carregar os horários.'))
             })
             .finally(() => { if (active) setLoading(false) })
         return () => { active = false }
@@ -43,55 +76,193 @@ export default function Booking() {
         event.preventDefault()
         setSubmitting(true)
         setError('')
-        setMessage('')
         try {
             await createAppointment(slug, { customerName, customerPhone, serviceId, startsAt })
-            setMessage('Agendamento confirmado!')
+            setConfirmation({
+                service: selectedService?.name || 'Serviço',
+                price: formatPrice(selectedService?.price),
+                date: formatDate(date),
+                time: formatTime(startsAt)
+            })
             setStartsAt('')
-            const refreshed = await getPublicAvailability(slug, date, serviceId)
-            setSlots(refreshed.slots)
+            setCustomerName('')
+            setCustomerPhone('')
+            getPublicAvailability(slug, date, serviceId)
+                .then((refreshed) => setSlots(refreshed.slots ?? []))
+                .catch(() => {})
         } catch (requestError) {
-            setError(requestError.response?.data?.error || requestError.message)
+            setError(getErrorMessage(requestError, 'Não foi possível confirmar o agendamento.'))
         } finally {
             setSubmitting(false)
         }
     }
 
+    function handleServiceChange(value) {
+        setServiceId(value)
+        setStartsAt('')
+        setError('')
+        setConfirmation(null)
+        setLoading(Boolean(value))
+        if (!value) setSlots([])
+    }
+
+    function handleDateChange(value) {
+        setDate(value)
+        setStartsAt('')
+        setError('')
+        setConfirmation(null)
+        setLoading(Boolean(serviceId))
+    }
+
+    function startOver() {
+        setConfirmation(null)
+        setStartsAt('')
+        setError('')
+    }
+
     return (
-        <main>
-            <h1>Agendar horário</h1>
-            {data?.barbershop && <h2>{data.barbershop.name}</h2>}
-            <label>Serviço
-                <select value={serviceId} onChange={(event) => {
-                    setServiceId(event.target.value)
-                    setStartsAt('')
-                    setError('')
-                    setLoading(Boolean(event.target.value))
-                    if (!event.target.value) setSlots([])
-                }} required>
-                    <option value="">Selecione um serviço</option>
-                    {data?.services?.map((service) => <option key={service.id} value={service.id}>{service.name} — R$ {service.price}</option>)}
-                </select>
-            </label>
-            <label>Data <DatePicker ariaLabel="Data do agendamento" min={localDate()} value={date} onChange={(value) => {
-                setDate(value)
-                setStartsAt('')
-                setError('')
-                setLoading(Boolean(serviceId))
-            }} required /></label>
-            {loading ? <p>Buscando horários...</p> : serviceId && <label>Horário
-                <select value={startsAt} onChange={(event) => setStartsAt(event.target.value)} required>
-                    <option value="">Selecione um horário</option>
-                    {slots.map((slot) => <option key={slot} value={slot}>{new Date(slot).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Fortaleza' })}</option>)}
-                </select>
-            </label>}
-            <form onSubmit={handleSubmit}>
-                <label>Seu nome <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} required /></label>
-                <label>Telefone <input type="tel" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} required /></label>
-                <button type="submit" disabled={submitting || !startsAt}>{submitting ? 'Confirmando...' : 'Confirmar agendamento'}</button>
-            </form>
-            {error && <p role="alert">{error}</p>}
-            {message && <p role="status">{message}</p>}
+        <main className="booking-page">
+            <header className="booking-header">
+                <div className="booking-header__brand">
+                    <span className="booking-header__mark" aria-hidden="true">N</span>
+                    <span className="booking-header__eyebrow">NAVAL</span>
+                </div>
+                <p className="booking-header__eyebrow">Agendamento online</p>
+                <h1>{data?.barbershop?.name || 'Agende seu horário'}</h1>
+                <p>Escolha o serviço, a data e o horário. É rápido e sem precisar ligar.</p>
+            </header>
+
+            <div className="booking-grid">
+                <section className="booking-card" aria-labelledby="booking-schedule-title">
+                    <div className="booking-card__heading">
+                        <span className="booking-card__step" aria-hidden="true">1</span>
+                        <div>
+                            <h2 id="booking-schedule-title">Serviço e horário</h2>
+                            <p>Selecione quando deseja ser atendido.</p>
+                        </div>
+                    </div>
+
+                    <div className="booking-fields">
+                        <div className="booking-field">
+                            <label htmlFor="booking-service">Serviço</label>
+                            <select
+                                id="booking-service"
+                                value={serviceId}
+                                onChange={(event) => handleServiceChange(event.target.value)}
+                                required
+                            >
+                                <option value="">Selecione um serviço</option>
+                                {data?.services?.map((service) => (
+                                    <option key={service.id} value={service.id}>
+                                        {service.name} — {formatPrice(service.price)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="booking-field">
+                            <label htmlFor="booking-date">Data</label>
+                            <DatePicker
+                                id="booking-date"
+                                ariaLabel="Data do agendamento"
+                                min={localDate()}
+                                value={date}
+                                onChange={handleDateChange}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="booking-slots-block">
+                        <div className="booking-slots__heading">
+                            <span>Horários disponíveis</span>
+                            <small>Fuso: {TIME_ZONE}</small>
+                        </div>
+
+                        {loading ? (
+                            <p className="booking-empty">Buscando horários...</p>
+                        ) : !serviceId ? (
+                            <p className="booking-empty">Escolha um serviço para ver os horários.</p>
+                        ) : slots.length === 0 ? (
+                            <p className="booking-empty">Nenhum horário disponível para esta data. Tente outro dia.</p>
+                        ) : (
+                            <div className="booking-slots" role="group" aria-label="Horários disponíveis">
+                                {slots.map((slot) => (
+                                    <button
+                                        key={slot}
+                                        type="button"
+                                        className={`booking-slot${startsAt === slot ? ' booking-slot--selected' : ''}`}
+                                        aria-pressed={startsAt === slot}
+                                        onClick={() => { setStartsAt(slot); setError('') }}
+                                    >
+                                        {formatTime(slot)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                <section className="booking-card" aria-labelledby="booking-customer-title">
+                    <div className="booking-card__heading">
+                        <span className="booking-card__step" aria-hidden="true">2</span>
+                        <div>
+                            <h2 id="booking-customer-title">Seus dados</h2>
+                            <p>Enviaremos a confirmação para o telefone informado.</p>
+                        </div>
+                    </div>
+
+                    <div className="booking-summary" aria-label="Resumo do agendamento">
+                        <div><span>Serviço</span><strong>{selectedService?.name || 'Não selecionado'}</strong></div>
+                        <div><span>Data</span><strong>{formatDate(date)}</strong></div>
+                        <div><span>Horário</span><strong>{formatTime(startsAt)}</strong></div>
+                        <div><span>Valor</span><strong>{selectedService ? formatPrice(selectedService.price) : '—'}</strong></div>
+                    </div>
+
+                    {confirmation ? (
+                        <div className="booking-confirmation" role="status">
+                            <h3>Agendamento confirmado!</h3>
+                            <p>{confirmation.service} · {confirmation.date} às {confirmation.time}</p>
+                            <p>Valor: {confirmation.price}</p>
+                            <button className="booking-secondary" type="button" onClick={startOver}>Fazer outro agendamento</button>
+                        </div>
+                    ) : (
+                        <form className="booking-form" onSubmit={handleSubmit}>
+                            {error && <p className="booking-feedback booking-feedback--error" role="alert">{error}</p>}
+
+                            <div className="booking-field">
+                                <label htmlFor="booking-name">Seu nome</label>
+                                <input
+                                    id="booking-name"
+                                    type="text"
+                                    value={customerName}
+                                    onChange={(event) => setCustomerName(event.target.value)}
+                                    autoComplete="name"
+                                    placeholder="Nome completo"
+                                    required
+                                />
+                            </div>
+
+                            <div className="booking-field">
+                                <label htmlFor="booking-phone">Telefone</label>
+                                <input
+                                    id="booking-phone"
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={(event) => setCustomerPhone(event.target.value)}
+                                    autoComplete="tel"
+                                    placeholder="(85) 99999-1234"
+                                    required
+                                />
+                            </div>
+
+                            <button className="booking-submit" type="submit" disabled={submitting || !startsAt}>
+                                {submitting ? 'Confirmando...' : 'Confirmar agendamento'}
+                            </button>
+                        </form>
+                    )}
+                </section>
+            </div>
         </main>
     )
 }

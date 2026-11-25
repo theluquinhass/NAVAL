@@ -1,10 +1,9 @@
 import { createPublicClient, createUserClient } from '../config/supabase.js'
 import { getBarbershopIdForAuthenticatedUser, getBarbershopIdForUser } from './barbershopService.js'
+import { isWithinWorkingHours, weekdayIndexForDate } from './workingHoursRules.js'
 
-const TIME_ZONE = 'America/Fortaleza'
 const HOURS_TABLE = 'barbershop_working_hours'
 const APPOINTMENTS_TABLE = 'appointments'
-const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function localDateTimeToIso(date, time) {
     return new Date(`${date}T${time}-03:00`).toISOString()
@@ -12,40 +11,6 @@ function localDateTimeToIso(date, time) {
 
 function dateDayOfWeek(date) {
     return new Date(`${date}T12:00:00-03:00`).getUTCDay()
-}
-
-function timeToMinutes(value) {
-    const [hour, minute] = value.split(':').map(Number)
-    return hour * 60 + minute
-}
-
-function fortalezaDateTimeParts(value) {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        weekday: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23'
-    }).formatToParts(new Date(value))
-    return Object.fromEntries(parts.filter((part) => part.type !== 'literal').map(({ type, value: partValue }) => [type, partValue]))
-}
-
-function isWithinConfiguredPeriods(appointment, periods) {
-    const start = fortalezaDateTimeParts(appointment.starts_at)
-    const end = fortalezaDateTimeParts(appointment.ends_at)
-    if (`${start.year}-${start.month}-${start.day}` !== `${end.year}-${end.month}-${end.day}`) return false
-
-    const dayOfWeek = WEEKDAY_NAMES.indexOf(start.weekday)
-    const startMinutes = Number(start.hour) * 60 + Number(start.minute)
-    const endMinutes = Number(end.hour) * 60 + Number(end.minute)
-    return periods.some((period) => (
-        period.day_of_week === dayOfWeek &&
-        startMinutes >= timeToMinutes(period.opens_at) &&
-        endMinutes <= timeToMinutes(period.closes_at)
-    ))
 }
 
 async function getFutureConfirmedAppointments(supabase, profileId) {
@@ -90,7 +55,11 @@ export async function saveWorkingHours(token, userId, rows, { confirmConflicts =
     const profileId = await getBarbershopIdForUser(token, userId)
     const supabase = createUserClient(token)
     const appointments = await getFutureConfirmedAppointments(supabase, profileId)
-    const conflicts = appointments.filter((appointment) => !isWithinConfiguredPeriods(appointment, rows))
+    const conflicts = appointments.filter((appointment) => {
+        const weekday = weekdayIndexForDate(appointment.starts_at)
+        const dayPeriods = rows.filter((row) => row.day_of_week === weekday)
+        return !isWithinWorkingHours(appointment.starts_at, appointment.ends_at, dayPeriods)
+    })
 
     if (conflicts.length > 0 && !confirmConflicts) {
         const error = new Error('WORKING_HOURS_CONFLICTS')
@@ -120,7 +89,10 @@ export async function getPublicBookingData(slug, date, serviceId) {
     const barbershop = await getPublicBarbershop(slug)
     const [{ data: services, error: servicesError }, { data: hours, error: hoursError }] = await Promise.all([
         supabase.from('services').select('id, name, description, price, duration').eq('profile_id', barbershop.id).order('name'),
-        supabase.from(HOURS_TABLE).select('day_of_week, opens_at, closes_at').eq('profile_id', barbershop.id)
+        supabase.from(HOURS_TABLE)
+            .select('day_of_week, opens_at, closes_at')
+            .eq('profile_id', barbershop.id)
+            .order('period_index')
     ])
     if (servicesError || hoursError) throw new Error('PUBLIC_BOOKING_DATA_FAILED', { cause: servicesError || hoursError })
 
@@ -164,28 +136,14 @@ export async function createPublicAppointment(slug, payload) {
     const startsAt = new Date(payload.startsAt)
     if (startsAt.getTime() <= Date.now()) throw new Error('SLOT_UNAVAILABLE')
     const endsAt = new Date(startsAt.getTime() + service.duration * 60_000)
-    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, weekday: 'short' }).format(startsAt)
     const { data: periods, error: hoursError } = await supabase
         .from(HOURS_TABLE)
         .select('opens_at, closes_at')
         .eq('profile_id', barbershop.id)
-        .eq('day_of_week', WEEKDAY_NAMES.indexOf(weekday))
+        .eq('day_of_week', weekdayIndexForDate(startsAt))
         .order('period_index')
     if (hoursError) throw new Error('WORKING_HOURS_READ_FAILED', { cause: hoursError })
-    if (!periods?.length) throw new Error('SLOT_UNAVAILABLE')
-
-    const startParts = fortalezaDateTimeParts(startsAt)
-    const endParts = fortalezaDateTimeParts(endsAt)
-    const sameLocalDate = startParts.year === endParts.year && startParts.month === endParts.month && startParts.day === endParts.day
-    const startsAtMinutes = Number(startParts.hour) * 60 + Number(startParts.minute)
-    const endsAtMinutes = Number(endParts.hour) * 60 + Number(endParts.minute)
-    const withinBusinessHours = sameLocalDate && periods.some((period) => (
-        startsAtMinutes >= timeToMinutes(period.opens_at) &&
-        endsAtMinutes <= timeToMinutes(period.closes_at)
-    ))
-    if (!withinBusinessHours) {
-        throw new Error('SLOT_UNAVAILABLE')
-    }
+    if (!isWithinWorkingHours(startsAt, endsAt, periods)) throw new Error('SLOT_UNAVAILABLE')
 
     const { error } = await supabase.from(APPOINTMENTS_TABLE).insert({
         profile_id: barbershop.id,
@@ -214,7 +172,17 @@ export async function createPrivateAppointment(supabase, userId, payload) {
     if (!service) throw new Error('SERVICE_NOT_FOUND')
 
     const startsAt = new Date(payload.startsAt)
+    if (startsAt.getTime() <= Date.now()) throw new Error('SLOT_UNAVAILABLE')
     const endsAt = new Date(startsAt.getTime() + service.duration * 60_000)
+    const { data: periods, error: hoursError } = await supabase
+        .from(HOURS_TABLE)
+        .select('opens_at, closes_at')
+        .eq('profile_id', profileId)
+        .eq('day_of_week', weekdayIndexForDate(startsAt))
+        .order('period_index')
+    if (hoursError) throw new Error('WORKING_HOURS_READ_FAILED', { cause: hoursError })
+    if (!isWithinWorkingHours(startsAt, endsAt, periods)) throw new Error('SLOT_UNAVAILABLE')
+
     const appointment = {
         profile_id: profileId,
         service_id: service.id,
