@@ -1,0 +1,14 @@
+.working-hours { display: grid; }
+.working-hours__day { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(6rem, 0.55fr) repeat(2, minmax(8rem, 0.65fr)); align-items: center; gap: var(--space-4); min-width: 0; margin: 0; padding: var(--space-3) 0; border: 0; border-top: 1px solid var(--color-border); }
+.working-hours__day legend { padding: 0; color: var(--color-foreground); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.working-hours__day:has(.working-hours__toggle input:not(:checked)) { grid-template-columns: minmax(9rem, 1fr) minmax(6rem, 0.55fr); }
+.working-hours__toggle { display: flex !important; align-items: center; gap: var(--space-2) !important; color: var(--color-foreground) !important; }
+.working-hours__toggle input { width: 1rem; height: 1rem; accent-color: var(--color-primary); }
+.working-hours__time { grid-template-columns: auto minmax(6rem, 1fr); align-items: center; }
+.working-hours__time input { min-height: 2.5rem !important; }
+.working-hours > .dashboard-management__actions { justify-content: flex-end; padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+
+@media (max-width: 40rem) {
+  .working-hours__day, .working-hours__day:has(.working-hours__toggle input:not(:checked)) { grid-template-columns: minmax(0, 1fr) minmax(5.5rem, auto); gap: var(--space-3); }
+  .working-hours__time { grid-column: 1 / -1; grid-template-columns: 5rem minmax(0, 1fr); }
+}

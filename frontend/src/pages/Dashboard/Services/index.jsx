@@ -4,8 +4,9 @@ import {
     deleteService,
     listServices,
     updateService
-} from '../../services/servicesApi.js'
-import './management.css'
+} from '../../../services/servicesApi.js'
+import '../management.css'
+import './services.css'
 
 const emptyForm = { name: '', description: '', price: '', duration: '' }
 

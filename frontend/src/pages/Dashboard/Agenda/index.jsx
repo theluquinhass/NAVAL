@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import DatePicker from '../../components/DatePicker.jsx'
-import api from '../../services/api.js'
-import { listServices } from '../../services/servicesApi.js'
+import DatePicker from '../../../components/DatePicker.jsx'
+import api from '../../../services/api.js'
+import { listServices } from '../../../services/servicesApi.js'
 import {
     createPrivateAppointment,
     getAppointments,
     getPublicAvailability
-} from '../../services/schedulingApi.js'
+} from '../../../services/schedulingApi.js'
 import {
     formatSelectedDate,
     formatTime,

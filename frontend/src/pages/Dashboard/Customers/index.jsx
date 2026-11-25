@@ -4,8 +4,8 @@ import {
     getCustomerDetails,
     listCustomers,
     updateCustomer
-} from '../../services/customersApi.js'
-import './management.css'
+} from '../../../services/customersApi.js'
+import '../management.css'
 import './customers.css'
 
 const emptyForm = { name: '', phone: '' }

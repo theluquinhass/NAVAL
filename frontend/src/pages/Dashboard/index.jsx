@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../services/api'
-import { dashboardMetrics, demoAppointments, demoDayProgress } from './mockDashboardData.js'
+import { dashboardMetrics, demoAppointments, demoDayProgress } from './data/mockDashboardData.js'
 import './dashboard.css'
 
 const icons = {

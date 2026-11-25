@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getWorkingHours, saveWorkingHours } from '../../services/schedulingApi.js'
-import './management.css'
+import { getWorkingHours, saveWorkingHours } from '../../../services/schedulingApi.js'
+import '../management.css'
+import './workingHours.css'
 
 const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const defaultHours = weekdays.map((_, day_of_week) => ({ day_of_week, opens_at: '09:00', closes_at: '18:00', enabled: day_of_week > 0 && day_of_week < 6 }))
