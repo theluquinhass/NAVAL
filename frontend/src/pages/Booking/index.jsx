@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import DatePicker from '../../components/DatePicker.jsx'
 import { createAppointment, getPublicAvailability } from '../../services/schedulingApi.js'
 
 function localDate() {
@@ -83,8 +84,8 @@ export default function Booking() {
                     {data?.services?.map((service) => <option key={service.id} value={service.id}>{service.name} — R$ {service.price}</option>)}
                 </select>
             </label>
-            <label>Data <input type="date" min={localDate()} value={date} onChange={(event) => {
-                setDate(event.target.value)
+            <label>Data <DatePicker ariaLabel="Data do agendamento" min={localDate()} value={date} onChange={(value) => {
+                setDate(value)
                 setStartsAt('')
                 setError('')
                 setLoading(Boolean(serviceId))

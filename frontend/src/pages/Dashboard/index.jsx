@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../services/api'
 import { dashboardMetrics, demoAppointments, demoDayProgress } from './mockDashboardData.js'
@@ -94,7 +95,7 @@ export default function Dashboard() {
 
             <div className="dashboard-agenda-access">
                 <span>Precisa ver todos os horários do dia?</span>
-                <button type="button" disabled title="A página Agenda será disponibilizada em uma etapa futura">Agenda completa <Icon name="arrow" /></button>
+                <Link to="/dashboard/agenda">Agenda completa <Icon name="arrow" /></Link>
             </div>
         </main>
     )

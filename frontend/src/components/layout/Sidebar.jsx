@@ -14,10 +14,10 @@ const icons = {
 const groups = [
     { title: 'Principal', items: [{ label: 'Dashboard', icon: 'dashboard', to: '/dashboard' }] },
     { title: 'Gestão', items: [
-        { label: 'Agenda', icon: 'calendar' },
-        { label: 'Clientes', icon: 'users' },
-        { label: 'Serviços', icon: 'services' },
-        { label: 'Horários', icon: 'clock' },
+        { label: 'Agenda', icon: 'calendar', to: '/dashboard/agenda' },
+        { label: 'Clientes', icon: 'users', to: '/dashboard/customers' },
+        { label: 'Serviços', icon: 'services', to: '/dashboard/services' },
+        { label: 'Horários', icon: 'clock', to: '/dashboard/working-hours' },
         { label: 'Financeiro', icon: 'finance' }
     ] },
     { title: 'Sistema', items: [

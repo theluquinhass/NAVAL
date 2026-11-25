@@ -5,6 +5,7 @@ import {
     listServices,
     updateService
 } from '../../services/servicesApi.js'
+import './management.css'
 
 const emptyForm = { name: '', description: '', price: '', duration: '' }
 
@@ -120,13 +121,18 @@ export default function Services() {
     }
 
     return (
-        <section>
-            <h2>Serviços</h2>
+        <main className="dashboard-management">
+            <header className="dashboard-management__header">
+                <p className="dashboard-eyebrow">Gestão</p>
+                <h1>Serviços</h1>
+                <p>Cadastre e atualize os serviços oferecidos pela sua barbearia.</p>
+            </header>
 
-            <form onSubmit={handleSubmit}>
-                <h3>{editingId ? 'Editar serviço' : 'Cadastrar serviço'}</h3>
+            <div className="services-management__grid">
+            <form className="dashboard-management__panel services-management__form" onSubmit={handleSubmit}>
+                <div className="dashboard-management__panel-heading"><h2>{editingId ? 'Editar serviço' : 'Cadastrar serviço'}</h2><p>Informe nome, valor e duração do atendimento.</p></div>
 
-                <label htmlFor="service-name">Nome</label>
+                <label className="dashboard-management__field" htmlFor="service-name">Nome
                 <input
                     id="service-name"
                     name="name"
@@ -135,16 +141,18 @@ export default function Services() {
                     onChange={handleChange}
                     required
                 />
+                </label>
 
-                <label htmlFor="service-description">Descrição (opcional)</label>
+                <label className="dashboard-management__field" htmlFor="service-description">Descrição (opcional)
                 <textarea
                     id="service-description"
                     name="description"
                     value={form.description}
                     onChange={handleChange}
                 />
+                </label>
 
-                <label htmlFor="service-price">Preço</label>
+                <label className="dashboard-management__field" htmlFor="service-price">Preço
                 <input
                     id="service-price"
                     name="price"
@@ -155,8 +163,9 @@ export default function Services() {
                     onChange={handleChange}
                     required
                 />
+                </label>
 
-                <label htmlFor="service-duration">Duração em minutos</label>
+                <label className="dashboard-management__field" htmlFor="service-duration">Duração em minutos
                 <input
                     id="service-duration"
                     name="duration"
@@ -167,46 +176,46 @@ export default function Services() {
                     onChange={handleChange}
                     required
                 />
+                </label>
 
-                <button type="submit" disabled={saving}>
+                <div className="dashboard-management__actions"><button className="dashboard-management__primary" type="submit" disabled={saving}>
                     {saving ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Cadastrar serviço'}
                 </button>
                 {editingId && (
-                    <button type="button" onClick={resetForm} disabled={saving}>
+                    <button className="dashboard-management__secondary" type="button" onClick={resetForm} disabled={saving}>
                         Cancelar edição
                     </button>
-                )}
+                )}</div>
                 {formError && <p role="alert">{formError}</p>}
             </form>
 
-            {message && <p role="status">{message}</p>}
+            <section className="dashboard-management__panel services-management__list">
+            <div className="dashboard-management__panel-heading"><h2>Serviços cadastrados</h2><p>Gerencie os itens disponíveis para agendamento.</p></div>
+            {message && <p className="dashboard-management__notice" role="status">{message}</p>}
 
-            <div>
-                <h3>Serviços cadastrados</h3>
                 {loading ? (
-                    <p>Carregando serviços...</p>
+                    <p className="dashboard-management__empty">Carregando serviços...</p>
                 ) : loadError ? (
-                    <div>
+                    <div className="dashboard-management__empty">
                         <p role="alert">{loadError}</p>
-                        <button type="button" onClick={loadServices}>Tentar novamente</button>
+                        <button className="dashboard-management__secondary" type="button" onClick={loadServices}>Tentar novamente</button>
                     </div>
                 ) : services.length === 0 ? (
-                    <p>Nenhum serviço cadastrado.</p>
+                    <p className="dashboard-management__empty">Nenhum serviço cadastrado.</p>
                 ) : (
-                    <ul>
+                    <ul className="services-management__items">
                         {services.map((service) => (
-                            <li key={service.id}>
-                                <h4>{service.name}</h4>
+                            <li className="services-management__item" key={service.id}>
+                                <div className="services-management__item-heading"><h3>{service.name}</h3><span>{Number(service.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
                                 <p>{service.description || 'Sem descrição.'}</p>
-                                <p>Preço: {Number(service.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                                <p>Duração: {service.duration} minutos</p>
-                                <button type="button" onClick={() => startEditing(service)}>Editar</button>
-                                <button type="button" onClick={() => handleDelete(service)}>Excluir</button>
+                                <div className="services-management__item-footer"><span>{service.duration} min</span><div className="dashboard-management__actions"><button className="dashboard-management__secondary" type="button" onClick={() => startEditing(service)}>Editar</button>
+                                <button className="dashboard-management__danger" type="button" onClick={() => handleDelete(service)}>Excluir</button></div></div>
                             </li>
                         ))}
                     </ul>
                 )}
+            </section>
             </div>
-        </section>
+        </main>
     )
 }

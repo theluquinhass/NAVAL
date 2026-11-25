@@ -1,0 +1,31 @@
+.naval-date-picker { position: relative; display: block; min-width: 0; }
+.naval-date-picker__trigger { display: flex; width: 100%; min-height: 2.85rem; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-foreground); font: inherit; font-size: var(--font-size-sm); text-align: left; cursor: pointer; }
+.naval-date-picker__trigger:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.naval-date-picker__trigger svg { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; color: var(--color-primary); }
+.naval-date-picker__trigger:disabled { cursor: not-allowed; opacity: 0.65; }
+.naval-date-picker--invalid .naval-date-picker__trigger { border-color: var(--color-danger); }
+.naval-date-picker--compact { min-width: 9.5rem; }
+.naval-date-picker--compact .naval-date-picker__trigger { min-height: 2.5rem; padding: var(--space-2); }
+.naval-date-picker__calendar { position: absolute; z-index: 60; top: calc(100% + var(--space-2)); right: 0; width: min(19rem, calc(100vw - 2rem)); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-foreground); box-shadow: var(--shadow-lg); }
+.naval-date-picker__calendar-header { display: grid; grid-template-columns: 2.25rem 1fr 2.25rem; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.naval-date-picker__calendar-header h3 { margin: 0; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-align: center; text-transform: capitalize; }
+.naval-date-picker__calendar-header button, .naval-date-picker__footer button { min-height: 2.25rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-foreground); font: inherit; cursor: pointer; }
+.naval-date-picker__calendar-header button { font-size: var(--font-size-lg); }
+.naval-date-picker__calendar-header button:hover:not(:disabled), .naval-date-picker__footer button:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.naval-date-picker__calendar-header button:disabled, .naval-date-picker__footer button:disabled { cursor: not-allowed; opacity: 0.4; }
+.naval-date-picker__weekdays, .naval-date-picker__days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.2rem; }
+.naval-date-picker__weekdays { margin-bottom: var(--space-1); }
+.naval-date-picker__weekdays span { display: grid; min-height: 1.75rem; place-items: center; color: var(--color-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
+.naval-date-picker__days button, .naval-date-picker__blank { display: grid; min-width: 0; min-height: 2.15rem; place-items: center; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--color-foreground); font: inherit; font-size: var(--font-size-sm); }
+.naval-date-picker__days button { cursor: pointer; }
+.naval-date-picker__days button:hover:not(:disabled) { background: var(--color-surface-secondary); }
+.naval-date-picker__days button:disabled { cursor: not-allowed; color: var(--color-muted); opacity: 0.35; }
+.naval-date-picker__days .naval-date-picker__day--today { border-color: var(--color-primary); color: var(--color-primary); font-weight: var(--font-weight-semibold); }
+.naval-date-picker__days .naval-date-picker__day--selected { background: var(--color-primary); color: var(--color-on-primary); }
+.naval-date-picker__days .naval-date-picker__day--selected:hover:not(:disabled) { filter: brightness(0.94); }
+.naval-date-picker__footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-border); color: var(--color-muted); font-size: var(--font-size-xs); }
+.naval-date-picker__footer button { min-height: 2rem; padding-inline: var(--space-3); color: var(--color-primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
+
+@media (max-width: 24rem) {
+  .naval-date-picker__calendar { right: auto; left: 0; }
+}

@@ -10,6 +10,10 @@ import ProfileRoute from './routes/ProfileRoute'
 import SetupRoute from './routes/SetupRoute'
 import Booking from './pages/Booking'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
+import Services from './pages/Dashboard/Services.jsx'
+import WorkingHours from './pages/Dashboard/WorkingHours.jsx'
+import Agenda from './pages/Dashboard/Agenda.jsx'
+import Customers from './pages/Dashboard/Customers.jsx'
 
 import { Routes, Route } from 'react-router-dom'
 
@@ -23,6 +27,10 @@ function App() {
       <Route path='/book/:slug' element={<Booking />} />
       <Route path='/setup' element={<ProtectedRoute><SetupRoute><Setup /></SetupRoute></ProtectedRoute>} />
       <Route path='/dashboard' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Dashboard /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/services' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Services /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/working-hours' element={<ProtectedRoute><ProfileRoute><DashboardLayout><WorkingHours /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/agenda' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Agenda /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/customers' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Customers /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
     </Routes>
   )
 }

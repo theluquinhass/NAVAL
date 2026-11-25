@@ -6,5 +6,6 @@ const router = express.Router()
 router.get('/working-hours', controller.getWorkingHoursController)
 router.put('/working-hours', controller.putWorkingHoursController)
 router.get('/appointments', controller.getAppointmentsController)
+router.post('/appointments', controller.postPrivateAppointmentController)
 
 export default router

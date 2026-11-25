@@ -1,10 +1,13 @@
 import {
     createPublicAppointment,
+    createPrivateAppointment,
     getPublicBookingData,
     getWorkingHours,
     listAppointments,
     saveWorkingHours
 } from '../services/schedulingService.js'
+import { createUserClient } from '../config/supabase.js'
+import { validateAppointmentPayload } from '../validation/appointmentValidation.js'
 
 function internalError(res, error) {
     const message = error.message
@@ -56,6 +59,19 @@ export async function getAppointmentsController(req, res) {
     }
 }
 
+export async function postPrivateAppointmentController(req, res) {
+    const validation = validateAppointmentPayload(req.body)
+    if (validation.error) return res.status(400).json({ error: validation.error })
+
+    try {
+        const supabase = createUserClient(req.accessToken)
+        const appointment = await createPrivateAppointment(supabase, req.user.id, validation.payload)
+        return res.status(201).json({ appointment })
+    } catch (error) {
+        return internalError(res, error)
+    }
+}
+
 export async function getPublicAvailabilityController(req, res) {
     const { date, serviceId } = req.query
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? '')) {
@@ -88,6 +104,7 @@ export default {
     getWorkingHoursController,
     putWorkingHoursController,
     getAppointmentsController,
+    postPrivateAppointmentController,
     getPublicAvailabilityController,
     postPublicAppointmentController
 }

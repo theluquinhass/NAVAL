@@ -12,6 +12,10 @@ export async function getAppointments(from, to) {
     return (await api.get('/appointments', { params: { from, to } })).data.appointments
 }
 
+export async function createPrivateAppointment(payload) {
+    return (await api.post('/appointments', payload)).data.appointment
+}
+
 export async function getPublicAvailability(slug, date, serviceId) {
     return (await api.get(`/booking/${encodeURIComponent(slug)}/availability`, { params: { date, serviceId }, skipAuth: true })).data
 }

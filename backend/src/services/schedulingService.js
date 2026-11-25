@@ -1,5 +1,5 @@
 import { createPublicClient, createUserClient } from '../config/supabase.js'
-import { getBarbershopIdForUser } from './barbershopService.js'
+import { getBarbershopIdForAuthenticatedUser, getBarbershopIdForUser } from './barbershopService.js'
 
 const TIME_ZONE = 'America/Fortaleza'
 const HOURS_TABLE = 'barbershop_working_hours'
@@ -141,6 +141,41 @@ export async function createPublicAppointment(slug, payload) {
     if (error?.code === '23P01') throw new Error('SLOT_TAKEN')
     if (error) throw new Error('APPOINTMENT_CREATE_FAILED', { cause: error })
     return { starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: 'confirmed' }
+}
+
+export async function createPrivateAppointment(supabase, userId, payload) {
+    const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
+    const { data: service, error: serviceError } = await supabase
+        .from('services')
+        .select('id, duration')
+        .eq('id', payload.serviceId)
+        .eq('profile_id', profileId)
+        .maybeSingle()
+
+    if (serviceError) throw new Error('SERVICE_LOOKUP_FAILED', { cause: serviceError })
+    if (!service) throw new Error('SERVICE_NOT_FOUND')
+
+    const startsAt = new Date(payload.startsAt)
+    const endsAt = new Date(startsAt.getTime() + service.duration * 60_000)
+    const appointment = {
+        profile_id: profileId,
+        service_id: service.id,
+        customer_name: payload.customerName,
+        customer_phone: payload.customerPhone,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        status: 'confirmed'
+    }
+
+    const { data, error } = await supabase
+        .from(APPOINTMENTS_TABLE)
+        .insert(appointment)
+        .select('id, profile_id, service_id, customer_name, customer_phone, starts_at, ends_at, status, created_at')
+        .single()
+
+    if (error?.code === '23P01') throw new Error('SLOT_TAKEN', { cause: error })
+    if (error) throw new Error('APPOINTMENT_CREATE_FAILED', { cause: error })
+    return data
 }
 
 export async function listAppointments(token, userId, from, to) {
