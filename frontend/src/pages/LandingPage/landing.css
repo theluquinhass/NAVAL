@@ -1,0 +1,13 @@
+.landing-page { display: grid; min-height: 100vh; place-items: center; padding: var(--space-6); background: var(--color-background); color: var(--color-foreground); }
+.landing-page__content { max-width: 42rem; }
+.landing-page h1, .landing-page p { margin: 0; }
+.landing-page__eyebrow { margin-bottom: var(--space-3) !important; color: var(--color-primary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); letter-spacing: 0.12em; }
+.landing-page h1 { font-size: clamp(2.25rem, 6vw, 3.75rem); letter-spacing: -0.05em; line-height: var(--line-height-tight); }
+.landing-page__copy { margin-top: var(--space-4) !important; color: var(--color-muted); font-size: var(--font-size-lg); line-height: var(--line-height-relaxed); }
+.landing-page__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-8); }
+.landing-page__primary, .landing-page__secondary { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; padding: var(--space-2) var(--space-6); border: 1px solid transparent; border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); text-decoration: none; }
+.landing-page__primary { background: var(--color-primary); color: var(--color-on-primary); }
+.landing-page__primary:hover { filter: brightness(0.94); }
+.landing-page__secondary { border-color: var(--color-border); background: var(--color-surface); color: var(--color-foreground); }
+.landing-page__secondary:hover { background: var(--color-surface-secondary); }
+.landing-page__note { margin-top: var(--space-8) !important; color: var(--color-muted); font-size: var(--font-size-sm); }

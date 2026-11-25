@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import DatePicker from '../../../components/DatePicker.jsx'
-import api from '../../../services/api.js'
+import { useProfile } from '../../../hooks/useProfile.js'
 import { listServices } from '../../../services/servicesApi.js'
 import {
     createPrivateAppointment,
@@ -67,6 +67,7 @@ function CloseIcon() {
 }
 
 export default function Agenda() {
+    const profile = useProfile()
     const [selectedDate, setSelectedDate] = useState(getLocalDateValue)
     const [appointments, setAppointments] = useState([])
     const [loading, setLoading] = useState(true)
@@ -121,11 +122,11 @@ export default function Agenda() {
     useEffect(() => {
         if (!modalOpen) return undefined
         let active = true
-        Promise.all([listServices(), api.get('/profile')])
-            .then(([serviceList, profileResponse]) => {
+        listServices()
+            .then((serviceList) => {
                 if (!active) return
                 setServices(serviceList)
-                setShopSlug(profileResponse.data.profile?.slug || '')
+                setShopSlug(profile?.slug || '')
                 setServicesState('ready')
             })
             .catch((requestError) => {
@@ -136,7 +137,7 @@ export default function Agenda() {
             })
 
         return () => { active = false }
-    }, [modalOpen])
+    }, [modalOpen, profile?.slug])
 
     useEffect(() => {
         if (!modalOpen || servicesState !== 'ready' || !shopSlug || !form.serviceId || !form.date) {

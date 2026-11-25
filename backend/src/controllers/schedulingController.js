@@ -8,6 +8,7 @@ import {
 } from '../services/schedulingService.js'
 import { createUserClient } from '../config/supabase.js'
 import { validateAppointmentPayload } from '../validation/appointmentValidation.js'
+import { validateWorkingHoursRows } from '../validation/workingHoursValidation.js'
 
 function internalError(res, error) {
     const message = error.message
@@ -31,17 +32,28 @@ export async function getWorkingHoursController(req, res) {
 
 export async function putWorkingHoursController(req, res) {
     const rows = req.body?.workingHours
-    if (!Array.isArray(rows) || rows.some((row) =>
-        !Number.isInteger(row.day_of_week) || row.day_of_week < 0 || row.day_of_week > 6 ||
-        typeof row.opens_at !== 'string' || typeof row.closes_at !== 'string' ||
-        !/^([01]\d|2[0-3]):[0-5]\d$/.test(row.opens_at) ||
-        !/^([01]\d|2[0-3]):[0-5]\d$/.test(row.closes_at) || row.opens_at >= row.closes_at
-    ) || new Set(rows.map((row) => row.day_of_week)).size !== rows.length) {
-        return res.status(400).json({ error: 'Informe horários válidos e únicos para cada dia.' })
+    const validation = validateWorkingHoursRows(rows)
+    if (validation.error) return res.status(400).json({ error: validation.error })
+    if (req.body?.confirmConflicts !== undefined && typeof req.body.confirmConflicts !== 'boolean') {
+        return res.status(400).json({ error: 'Confirmação de conflitos inválida.' })
     }
     try {
-        return res.status(200).json({ workingHours: await saveWorkingHours(req.accessToken, req.user.id, rows) })
+        const workingHours = await saveWorkingHours(
+            req.accessToken,
+            req.user.id,
+            validation.rows,
+            { confirmConflicts: req.body?.confirmConflicts === true }
+        )
+        return res.status(200).json({ workingHours })
     } catch (error) {
+        if (error.message === 'WORKING_HOURS_CONFLICTS') {
+            return res.status(409).json({
+                code: error.message,
+                error: 'Há agendamentos confirmados fora dos novos períodos. Eles não serão alterados.',
+                conflicts: error.conflicts,
+                totalConflicts: error.totalConflicts
+            })
+        }
         return internalError(res, error)
     }
 }

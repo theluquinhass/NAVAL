@@ -4,8 +4,8 @@ export async function getWorkingHours() {
     return (await api.get('/working-hours')).data.workingHours
 }
 
-export async function saveWorkingHours(workingHours) {
-    return (await api.put('/working-hours', { workingHours })).data.workingHours
+export async function saveWorkingHours(workingHours, options = {}) {
+    return (await api.put('/working-hours', { workingHours, confirmConflicts: options.confirmConflicts === true })).data.workingHours
 }
 
 export async function getAppointments(from, to) {

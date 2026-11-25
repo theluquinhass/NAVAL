@@ -1,5 +1,6 @@
 import { after, before, mock, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { clearProfileCache } from '../src/services/barbershopService.js'
 
 const calls = []
 let barbershopResult
@@ -79,6 +80,7 @@ after(() => mock.restoreAll())
 
 function reset() {
     calls.length = 0
+    clearProfileCache()
     barbershopResult = { data: barbershop, error: null }
     serviceResult = { data: service, error: null }
     insertResult = { data: createdAppointment, error: null }

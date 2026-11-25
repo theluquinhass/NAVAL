@@ -1,5 +1,6 @@
 import { after, before, mock, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { clearProfileCache } from '../src/services/barbershopService.js'
 
 const ID = '8d8c9f3a-59f0-4d8c-9f0a-112233445566'
 const FROM = '2026-11-01T00:00:00-03:00'
@@ -91,6 +92,7 @@ function reset() {
     calls.length = 0
     results.clear()
     results.set('barbershops:select', { data: { id: 'shop-1' }, error: null })
+    clearProfileCache()
 }
 
 test('sums all ledger tables in cents and reports the Fortaleza time zone', async () => {

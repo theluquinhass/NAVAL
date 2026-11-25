@@ -25,6 +25,7 @@ mock.module('../src/config/supabase.js', {
 
 mock.module('../src/services/financeService.js', {
     namedExports: {
+        getFinanceOverview: (...args) => record('getFinanceOverview', args),
         getFinanceSummary: (...args) => record('getFinanceSummary', args),
         listPayments: (...args) => record('listPayments', args),
         createPayment: (...args) => record('createPayment', args),
@@ -91,6 +92,25 @@ test('rejects an invalid period before calling the service', async () => {
     assert.equal(response.status, 400)
     assert.match((await response.json()).error, /ISO 8601/)
     assert.equal(calls.length, 0)
+})
+
+test('returns the finance overview in one authenticated request', async () => {
+    reset()
+    implementation = {
+        getFinanceOverview: () => ({
+            summary: { revenue: 30 },
+            payments: [{ id: 'pay-1' }],
+            expenses: [],
+            categories: [{ id: 'cat-1' }]
+        })
+    }
+    const response = await request(`/finance/overview?from=${encodeURIComponent(FROM)}&to=${encodeURIComponent(TO)}`)
+
+    assert.equal(response.status, 200)
+    assert.deepEqual((await response.json()).payments, [{ id: 'pay-1' }])
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].name, 'getFinanceOverview')
+    assert.deepEqual(calls[0].args, ['valid-token', 'user-1', FROM, TO])
 })
 
 test('returns the summary using the authenticated token and resolved period', async () => {

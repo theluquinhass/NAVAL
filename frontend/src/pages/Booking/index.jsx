@@ -25,30 +25,19 @@ export default function Booking() {
 
     useEffect(() => {
         let active = true
-        if (!serviceId) {
-            return () => { active = false }
-        }
         getPublicAvailability(slug, date, serviceId)
             .then((response) => {
-                if (active) {
-                    setData(response)
-                    setSlots(response.slots)
-                }
+                if (!active) return
+                setData(response)
+                setSlots(response.slots ?? [])
             })
             .catch((requestError) => {
-                if (active) setError(requestError.response?.data?.error || requestError.message)
+                if (!active) return
+                setError(requestError.response?.data?.error || requestError.message)
             })
             .finally(() => { if (active) setLoading(false) })
         return () => { active = false }
     }, [slug, date, serviceId])
-
-    useEffect(() => {
-        let active = true
-        getPublicAvailability(slug, date, '')
-            .then((response) => { if (active) setData(response) })
-            .catch((requestError) => { if (active) setError(requestError.response?.data?.error || requestError.message) })
-        return () => { active = false }
-    }, [slug, date])
 
     async function handleSubmit(event) {
         event.preventDefault()

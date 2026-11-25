@@ -6,6 +6,8 @@ let busyTimes = []
 let busyError = null
 let hasService = true
 let hasHours = true
+let customHours = null
+const appointmentInserts = []
 
 const barbershop = { id: 'shop-1', name: 'NAVAL' }
 const service = { id: 'service-1', name: 'Corte', description: null, price: 25, duration: 30 }
@@ -17,10 +19,18 @@ function queryResult(table) {
         select() { return this },
         eq() { return this },
         order() { return this },
+        maybeSingle() {
+            const data = table === 'services' ? (hasService ? { ...service, duration: service.duration } : null) : null
+            return Promise.resolve({ data, error: null })
+        },
+        insert(payload) {
+            appointmentInserts.push(payload)
+            return Promise.resolve({ error: null })
+        },
         then(resolve, reject) {
             const data = table === 'services'
                 ? (hasService ? [service] : [])
-                : (hasHours ? [{ day_of_week: dayOfWeek, opens_at: '09:00:00', closes_at: '11:00:00' }] : [])
+                : (customHours ?? (hasHours ? [{ day_of_week: dayOfWeek, opens_at: '09:00:00', closes_at: '11:00:00' }] : []))
             return Promise.resolve({ data, error: null }).then(resolve, reject)
         }
     }
@@ -58,6 +68,8 @@ function reset() {
     busyError = null
     hasService = true
     hasHours = true
+    customHours = null
+    appointmentInserts.length = 0
 }
 
 test('returns available slots when there are no appointments', async () => {
@@ -88,6 +100,62 @@ test('does not return slots before the current time', async () => {
     } finally {
         nowMock.mock.restore()
     }
+})
+
+test('keeps the gap between multiple daily periods unavailable', async () => {
+    reset()
+    customHours = [
+        { day_of_week: dayOfWeek, period_index: 0, opens_at: '09:00:00', closes_at: '11:00:00' },
+        { day_of_week: dayOfWeek, period_index: 1, opens_at: '14:00:00', closes_at: '15:00:00' }
+    ]
+    const result = await getPublicBookingData('naval', date, service.id)
+    assert.deepEqual(result.slots, [
+        '2099-06-15T12:00:00.000Z',
+        '2099-06-15T12:30:00.000Z',
+        '2099-06-15T13:00:00.000Z',
+        '2099-06-15T13:30:00.000Z',
+        '2099-06-15T17:00:00.000Z',
+        '2099-06-15T17:30:00.000Z'
+    ])
+})
+
+test('rejects public bookings during the gap between daily periods', async () => {
+    reset()
+    customHours = [
+        { day_of_week: dayOfWeek, period_index: 0, opens_at: '09:00:00', closes_at: '11:00:00' },
+        { day_of_week: dayOfWeek, period_index: 1, opens_at: '14:00:00', closes_at: '18:00:00' }
+    ]
+
+    const { createPublicAppointment } = await import('../src/services/schedulingService.js')
+    await assert.rejects(
+        createPublicAppointment('naval', {
+            customerName: 'Cliente',
+            customerPhone: '84999999999',
+            serviceId: service.id,
+            startsAt: '2099-06-15T15:00:00.000Z'
+        }),
+        (error) => error.message === 'SLOT_UNAVAILABLE'
+    )
+    assert.equal(appointmentInserts.length, 0)
+})
+
+test('accepts a public booking that fits entirely inside a later period', async () => {
+    reset()
+    customHours = [
+        { day_of_week: dayOfWeek, period_index: 0, opens_at: '09:00:00', closes_at: '11:00:00' },
+        { day_of_week: dayOfWeek, period_index: 1, opens_at: '14:00:00', closes_at: '18:00:00' }
+    ]
+
+    const { createPublicAppointment } = await import('../src/services/schedulingService.js')
+    const result = await createPublicAppointment('naval', {
+        customerName: 'Cliente',
+        customerPhone: '84999999999',
+        serviceId: service.id,
+        startsAt: '2099-06-15T17:00:00.000Z'
+    })
+
+    assert.equal(result.status, 'confirmed')
+    assert.equal(appointmentInserts.length, 1)
 })
 
 test('returns no slots when the shop has no working hours for the day', async () => {

@@ -5,10 +5,7 @@ import {
     createPayment,
     createRefund,
     deleteCategory,
-    getFinanceSummary,
-    listCategories,
-    listExpenses,
-    listPayments,
+    getFinanceOverview,
     updateCategory,
     updateExpense
 } from '../../../services/financeApi.js'
@@ -443,18 +440,13 @@ export default function Finance() {
         if (periodInvalid) return undefined
 
         let active = true
-        Promise.all([
-            getFinanceSummary(from, to),
-            listPayments(from, to),
-            listExpenses(from, to),
-            listCategories()
-        ])
-            .then(([nextSummary, nextPayments, nextExpenses, nextCategories]) => {
+        getFinanceOverview(from, to)
+            .then((overview) => {
                 if (!active) return
-                setSummary(nextSummary)
-                setPayments(nextPayments)
-                setExpenses(nextExpenses)
-                setCategories(nextCategories)
+                setSummary(overview.summary)
+                setPayments(overview.payments)
+                setExpenses(overview.expenses)
+                setCategories(overview.categories)
                 setError('')
                 setLoadedKey(requestKey)
             })

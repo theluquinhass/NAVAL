@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from '../services/api.js'
 import { Navigate } from "react-router-dom";
+import { ProfileProvider } from "../contexts/ProfileProvider.jsx";
 
 const ProfileRoute = ({ children }) => {
     const [profile, setProfile] = useState(null)
@@ -35,7 +36,7 @@ const ProfileRoute = ({ children }) => {
         return <Navigate to="/setup" replace />
     }
 
-    return <>{children}</>
-
+    return <ProfileProvider value={profile}>{children}</ProfileProvider>
 }
+
 export default ProfileRoute

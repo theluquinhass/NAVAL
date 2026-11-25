@@ -3,6 +3,7 @@ import controller from '../controllers/financeController.js'
 
 const router = express.Router()
 
+router.get('/finance/overview', controller.getFinanceOverviewController)
 router.get('/finance/summary', controller.getFinanceSummaryController)
 router.get('/finance/payments', controller.getPaymentsController)
 router.post('/finance/payments', controller.postPaymentController)

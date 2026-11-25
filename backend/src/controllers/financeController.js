@@ -4,6 +4,7 @@ import {
     createPayment,
     createRefund,
     deleteCategory,
+    getFinanceOverview,
     getFinanceSummary,
     listCategories,
     listExpenses,
@@ -49,6 +50,19 @@ function handleFinanceError(error, res, action) {
 
 function invalidId(res) {
     return res.status(400).json({ error: 'Identificador inválido.' })
+}
+
+export async function getFinanceOverviewController(req, res) {
+    const validation = validatePeriod(req.query)
+    if (validation.error) return res.status(400).json({ error: validation.error })
+
+    try {
+        const { from, to } = validation.period
+        const overview = await getFinanceOverview(req.accessToken, req.user.id, from, to)
+        return res.status(200).json(overview)
+    } catch (error) {
+        return handleFinanceError(error, res, 'buscar')
+    }
 }
 
 export async function getFinanceSummaryController(req, res) {
@@ -182,6 +196,7 @@ export async function deleteCategoryController(req, res) {
 }
 
 export default {
+    getFinanceOverviewController,
     getFinanceSummaryController,
     getPaymentsController,
     postPaymentController,

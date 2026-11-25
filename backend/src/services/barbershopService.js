@@ -1,7 +1,35 @@
 import { createUserClient } from "../config/supabase.js";
 
 const TABLE = 'barbershops'
+const PROFILE_CACHE_TTL_MS = 30_000
+const MAX_ENTRIES = 500
 
+const profileCache = new Map()
+
+function cachedProfileId(userId) {
+    const entry = profileCache.get(userId)
+    if (!entry) return null
+    if (entry.expiresAt <= Date.now()) {
+        profileCache.delete(userId)
+        return null
+    }
+    return entry.profileId
+}
+
+function rememberProfileId(userId, profileId) {
+    profileCache.delete(userId)
+    profileCache.set(userId, {
+        profileId,
+        expiresAt: Date.now() + PROFILE_CACHE_TTL_MS
+    })
+    while (profileCache.size > MAX_ENTRIES) {
+        profileCache.delete(profileCache.keys().next().value)
+    }
+}
+
+export function clearProfileCache() {
+    profileCache.clear()
+}
 
 export default async function createProfileService(payload, token) {
     const supabase = createUserClient(token)
@@ -12,6 +40,7 @@ export default async function createProfileService(payload, token) {
         .single()
 
     if (error) throw new Error(error.message)
+    profileCache.delete(payload.user_id)
     return data
 }
 
@@ -20,7 +49,18 @@ export async function getBarbershopIdForUser(token, userId) {
     return getBarbershopIdForAuthenticatedUser(supabase, userId)
 }
 
+export function findProfileForUser(supabase, userId) {
+    return supabase
+        .from(TABLE)
+        .select('id, name, slug')
+        .eq('user_id', userId)
+        .maybeSingle()
+}
+
 export async function getBarbershopIdForAuthenticatedUser(supabase, userId) {
+    const cached = cachedProfileId(userId)
+    if (cached) return cached
+
     const { data, error } = await supabase
         .from('barbershops')
         .select('id')
@@ -29,5 +69,6 @@ export async function getBarbershopIdForAuthenticatedUser(supabase, userId) {
 
     if (error) throw new Error('BARBERSHOP_LOOKUP_FAILED', { cause: error })
     if (!data) throw new Error('BARBERSHOP_NOT_FOUND')
+    rememberProfileId(userId, data.id)
     return data.id
 }

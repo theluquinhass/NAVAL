@@ -4,6 +4,10 @@ function params(from, to) {
     return { params: { from, to } }
 }
 
+export async function getFinanceOverview(from, to) {
+    return (await api.get('/finance/overview', params(from, to))).data
+}
+
 export async function getFinanceSummary(from, to) {
     return (await api.get('/finance/summary', params(from, to))).data.summary
 }

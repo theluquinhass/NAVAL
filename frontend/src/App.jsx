@@ -1,6 +1,5 @@
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
-import Checkout from './pages/Checkout'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Setup from './pages/Setup'
@@ -24,7 +23,6 @@ function App() {
       <Route path='/' element={<GuestRoute><LandingPage /></GuestRoute>} />
       <Route path='/register' element={<GuestRoute> <Register /> </GuestRoute>} />
       <Route path='/login' element={<GuestRoute> <Login /> </GuestRoute>} />
-      <Route path='/checkout' element={<Checkout />} />
       <Route path='/book/:slug' element={<Booking />} />
       <Route path='/setup' element={<ProtectedRoute><SetupRoute><Setup /></SetupRoute></ProtectedRoute>} />
       <Route path='/dashboard' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Dashboard /></DashboardLayout></ProfileRoute></ProtectedRoute>} />

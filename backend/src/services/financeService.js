@@ -34,6 +34,16 @@ function throwDatabaseError(error, { notFound, duplicate, invalid, failed }) {
     throw new Error(failed, { cause: error })
 }
 
+export async function getFinanceOverview(token, userId, from, to) {
+    const [summary, payments, expenses, categories] = await Promise.all([
+        getFinanceSummary(token, userId, from, to),
+        listPayments(token, userId, from, to),
+        listExpenses(token, userId, from, to),
+        listCategories(token, userId)
+    ])
+    return { summary, payments, expenses, categories }
+}
+
 export async function getFinanceSummary(token, userId, from, to) {
     const { supabase, profileId } = await getContext(token, userId)
     const [paymentsResult, refundsResult, expensesResult] = await Promise.all([

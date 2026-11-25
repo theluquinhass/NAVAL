@@ -1,26 +1,15 @@
 import { createUserClient } from '../config/supabase.js'
+import { getBarbershopIdForAuthenticatedUser } from './barbershopService.js'
 
 const SERVICES_TABLE = 'services'
-const BARBERSHOPS_TABLE = 'barbershops'
-
-async function getBarbershopId(supabase, userId) {
-    const { data, error } = await supabase
-        .from(BARBERSHOPS_TABLE)
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-    if (error) throw new Error('BARBERSHOP_LOOKUP_FAILED')
-    if (!data) throw new Error('BARBERSHOP_NOT_FOUND')
-    return data.id
-}
+const SERVICE_COLUMNS = 'id, name, description, price, duration'
 
 export async function listServices(token, userId) {
     const supabase = createUserClient(token)
-    const profileId = await getBarbershopId(supabase, userId)
+    const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
     const { data, error } = await supabase
         .from(SERVICES_TABLE)
-        .select('*')
+        .select(SERVICE_COLUMNS)
         .eq('profile_id', profileId)
 
     if (error) throw new Error('SERVICE_LIST_FAILED')
@@ -29,7 +18,7 @@ export async function listServices(token, userId) {
 
 export async function createService(payload, token, userId) {
     const supabase = createUserClient(token)
-    const profileId = await getBarbershopId(supabase, userId)
+    const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
 
     const { data, error } = await supabase
         .from(SERVICES_TABLE)
@@ -40,7 +29,7 @@ export async function createService(payload, token, userId) {
             price: payload.price,
             duration: payload.duration
         })
-        .select()
+        .select(SERVICE_COLUMNS)
         .single()
 
     if (error) throw new Error('SERVICE_CREATE_FAILED')
@@ -49,7 +38,7 @@ export async function createService(payload, token, userId) {
 
 export async function updateService(serviceId, payload, token, userId) {
     const supabase = createUserClient(token)
-    const profileId = await getBarbershopId(supabase, userId)
+    const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
 
     const { data, error } = await supabase
         .from(SERVICES_TABLE)
@@ -61,7 +50,7 @@ export async function updateService(serviceId, payload, token, userId) {
         })
         .eq('id', serviceId)
         .eq('profile_id', profileId)
-        .select()
+        .select(SERVICE_COLUMNS)
         .maybeSingle()
 
     if (error) throw new Error('SERVICE_UPDATE_FAILED')
@@ -71,7 +60,7 @@ export async function updateService(serviceId, payload, token, userId) {
 
 export async function deleteService(serviceId, token, userId) {
     const supabase = createUserClient(token)
-    const profileId = await getBarbershopId(supabase, userId)
+    const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
 
     const { data, error } = await supabase
         .from(SERVICES_TABLE)
