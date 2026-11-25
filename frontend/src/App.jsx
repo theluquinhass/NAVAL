@@ -14,6 +14,7 @@ import Services from './pages/Dashboard/Services'
 import WorkingHours from './pages/Dashboard/WorkingHours'
 import Agenda from './pages/Dashboard/Agenda'
 import Customers from './pages/Dashboard/Customers'
+import Finance from './pages/Dashboard/Finance'
 
 import { Routes, Route } from 'react-router-dom'
 
@@ -31,6 +32,7 @@ function App() {
       <Route path='/dashboard/working-hours' element={<ProtectedRoute><ProfileRoute><DashboardLayout><WorkingHours /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
       <Route path='/dashboard/agenda' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Agenda /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
       <Route path='/dashboard/customers' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Customers /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/finance' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Finance /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
     </Routes>
   )
 }

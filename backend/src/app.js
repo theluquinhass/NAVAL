@@ -8,6 +8,7 @@ import serviceRoutes from './routes/serviceRoutes.js'
 import schedulingRoutes from './routes/schedulingRoutes.js'
 import publicBookingRoutes from './routes/publicBookingRoutes.js'
 import customerRoutes from './routes/customerRoutes.js'
+import financeRoutes from './routes/financeRoutes.js'
 
 const app = express()
 
@@ -21,6 +22,7 @@ app.use(authMiddleware, barbershopRoutes)
 app.use(authMiddleware, serviceRoutes)
 app.use(authMiddleware, schedulingRoutes)
 app.use(authMiddleware, customerRoutes)
+app.use(authMiddleware, financeRoutes)
 
 app.get('/profile', authMiddleware, async (req, res) => {
     const supabase = createUserClient(req.accessToken)

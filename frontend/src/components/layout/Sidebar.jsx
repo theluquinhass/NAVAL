@@ -18,7 +18,7 @@ const groups = [
         { label: 'Clientes', icon: 'users', to: '/dashboard/customers' },
         { label: 'Serviços', icon: 'services', to: '/dashboard/services' },
         { label: 'Horários', icon: 'clock', to: '/dashboard/working-hours' },
-        { label: 'Financeiro', icon: 'finance' }
+        { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' }
     ] },
     { title: 'Sistema', items: [
         { label: 'Meu negócio', icon: 'business' },
