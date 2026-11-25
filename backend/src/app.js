@@ -11,6 +11,7 @@ import schedulingRoutes from './routes/schedulingRoutes.js'
 import publicBookingRoutes from './routes/publicBookingRoutes.js'
 import customerRoutes from './routes/customerRoutes.js'
 import financeRoutes from './routes/financeRoutes.js'
+import productRoutes from './routes/productRoutes.js'
 import dashboardRoutes from './routes/dashboardRoutes.js'
 
 const app = express()
@@ -27,6 +28,7 @@ app.use(authMiddleware, serviceRoutes)
 app.use(authMiddleware, schedulingRoutes)
 app.use(authMiddleware, customerRoutes)
 app.use(authMiddleware, financeRoutes)
+app.use(authMiddleware, productRoutes)
 app.use(authMiddleware, dashboardRoutes)
 
 app.get('/profile', authMiddleware, async (req, res) => {

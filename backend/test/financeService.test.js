@@ -243,6 +243,22 @@ test('scopes expense updates and category deletion to the resolved profile', asy
     assert.deepEqual(deleteCall.filters, [['id', ID], ['profile_id', 'shop-1']])
 })
 
+test('includes product sales in the finance overview without changing revenue sources', async () => {
+    reset()
+    results.set('payments:select', {
+        data: [{ id: 'p1', amount: '30.00', paid_at: FROM, source_type: 'product_sale', sale_id: ID }],
+        error: null
+    })
+    results.set('sales:select', { data: [{ id: ID, total_amount: '30.00', sold_at: FROM }], error: null })
+
+    const overview = await financeService.getFinanceOverview('token-1', 'user-1', FROM, TO)
+
+    assert.equal(overview.summary.revenue, 30)
+    assert.deepEqual(overview.sales, [{ id: ID, total_amount: '30.00', sold_at: FROM }])
+    assert.equal(overview.payments[0].source_type, 'product_sale')
+    assert.equal(calls.filter((call) => call.table === 'payments').length >= 2, true)
+})
+
 test('fails closed when the authenticated user has no barbershop', async () => {
     reset()
     results.set('barbershops:select', { data: null, error: null })

@@ -9,6 +9,7 @@ import {
     updateCategory,
     updateExpense
 } from '../../../services/financeApi.js'
+import { createSale, listProducts, refundSale } from '../../../services/productsApi.js'
 import { getAppointments } from '../../../services/schedulingApi.js'
 import '../management.css'
 import './finance.css'
@@ -161,6 +162,217 @@ function PaymentForm({ appointments, appointmentsError, onCancel, onSaved }) {
             {error && <p role="alert">{error}</p>}
             <FormActions saving={saving} onCancel={onCancel} label="Registrar pagamento" />
         </form>
+    )
+}
+
+function newIdempotencyKey() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+        const random = Math.floor(Math.random() * 16)
+        const value = character === 'x' ? random : (random & 0x3) | 0x8
+        return value.toString(16)
+    })
+}
+
+function SaleForm({ products, productsError, onCancel, onSaved }) {
+    const availableProducts = useMemo(
+        () => products.filter((product) => product.is_active && product.stock > 0),
+        [products]
+    )
+    const [items, setItems] = useState(() => [{
+        productId: availableProducts[0]?.id ?? '',
+        quantity: '1'
+    }])
+    const [form, setForm] = useState({ paymentMethod: 'Pix', soldAt: fortalezaInputValue(), note: '' })
+    const [error, setError] = useState('')
+    const [saving, setSaving] = useState(false)
+    const idempotencyKey = useMemo(() => newIdempotencyKey(), [])
+
+    const total = useMemo(() => items.reduce((sum, item) => {
+        const product = products.find((entry) => entry.id === item.productId)
+        const quantity = Number(item.quantity)
+        return sum + (product && Number.isFinite(quantity) ? Number(product.price) * quantity : 0)
+    }, 0), [items, products])
+
+    function changeForm(event) {
+        const { name, value } = event.target
+        setForm((current) => ({ ...current, [name]: value }))
+        setError('')
+    }
+
+    function changeItem(index, field, value) {
+        setItems((current) => current.map((item, itemIndex) => (
+            itemIndex === index ? { ...item, [field]: value } : item
+        )))
+        setError('')
+    }
+
+    function addItem() {
+        if (items.length >= availableProducts.length) return
+        setItems((current) => [...current, { productId: '', quantity: '1' }])
+    }
+
+    function removeItem(index) {
+        setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))
+        setError('')
+    }
+
+    async function submit(event) {
+        event.preventDefault()
+        if (availableProducts.length === 0) {
+            setError('Não há produtos ativos com estoque disponível.')
+            return
+        }
+        if (!form.soldAt) {
+            setError('Informe quando a venda ocorreu.')
+            return
+        }
+
+        const selectedIds = new Set()
+        for (const item of items) {
+            if (!item.productId) {
+                setError('Selecione um produto em cada linha.')
+                return
+            }
+            if (selectedIds.has(item.productId)) {
+                setError('Não repita produtos; ajuste a quantidade na linha existente.')
+                return
+            }
+            if (!/^\d+$/.test(String(item.quantity)) || Number(item.quantity) < 1) {
+                setError('Informe quantidades inteiras maiores que zero.')
+                return
+            }
+            const product = products.find((entry) => entry.id === item.productId)
+            if (!product || product.stock < Number(item.quantity)) {
+                setError(`Estoque insuficiente para ${product?.name ?? 'o produto selecionado'}.`)
+                return
+            }
+            selectedIds.add(item.productId)
+        }
+
+        setSaving(true)
+        setError('')
+        try {
+            await createSale({
+                items: items.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) })),
+                paymentMethod: form.paymentMethod.trim(),
+                soldAt: toFortalezaIso(form.soldAt),
+                note: form.note.trim() || null,
+                idempotencyKey
+            })
+            onSaved('Venda registrada. Receita e estoque atualizados.')
+        } catch (submitError) {
+            setError(getErrorMessage(submitError, 'Não foi possível registrar a venda.'))
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <form className="dashboard-management__panel finance-form finance-sale-form" onSubmit={submit}>
+            <div className="dashboard-management__panel-heading">
+                <h2>Registrar venda de produto</h2>
+                <p>Escolha produtos ativos e quantidades. Preço, custo, total, pagamento e baixa de estoque são calculados no servidor.</p>
+            </div>
+            {productsError && <p className="finance-form__hint" role="alert">{productsError}</p>}
+            {availableProducts.length === 0 ? (
+                <p className="dashboard-management__empty">Cadastre produtos com estoque para registrar uma venda.</p>
+            ) : (
+                <>
+                    <div className="finance-sale-items">
+                        {items.map((item, index) => (
+                            <div className="finance-sale-item" key={index}>
+                                <label className="dashboard-management__field" htmlFor={`sale-product-${index}`}>Produto
+                                    <select id={`sale-product-${index}`} value={item.productId} onChange={(event) => changeItem(index, 'productId', event.target.value)} required>
+                                        <option value="">Selecione</option>
+                                        {availableProducts.map((product) => (
+                                            <option
+                                                key={product.id}
+                                                value={product.id}
+                                                disabled={items.some((other, otherIndex) => otherIndex !== index && other.productId === product.id)}
+                                            >
+                                                {product.name} · {formatMoney(product.price)} · {product.stock} un.
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="dashboard-management__field" htmlFor={`sale-quantity-${index}`}>Quantidade
+                                    <input id={`sale-quantity-${index}`} name="quantity" type="number" min="1" required value={item.quantity} onChange={(event) => changeItem(index, 'quantity', event.target.value)} />
+                                </label>
+                                <button className="dashboard-management__secondary" type="button" onClick={() => removeItem(index)} disabled={items.length === 1 || saving}>Remover</button>
+                            </div>
+                        ))}
+                    </div>
+                    <button className="dashboard-management__secondary" type="button" onClick={addItem} disabled={items.length >= availableProducts.length || saving}>Adicionar produto</button>
+                    <label className="dashboard-management__field" htmlFor="sale-method">Forma de pagamento
+                        <input id="sale-method" name="paymentMethod" type="text" maxLength={50} required value={form.paymentMethod} onChange={changeForm} />
+                    </label>
+                    <label className="dashboard-management__field" htmlFor="sale-date">Vendido em (Fortaleza)
+                        <input id="sale-date" name="soldAt" type="datetime-local" required value={form.soldAt} onChange={changeForm} />
+                    </label>
+                    <label className="dashboard-management__field" htmlFor="sale-note">Observação (opcional)
+                        <input id="sale-note" name="note" type="text" maxLength={500} value={form.note} onChange={changeForm} />
+                    </label>
+                    <p className="finance-sale-total">Total calculado no servidor: <strong>{formatMoney(total)}</strong></p>
+                    {error && <p role="alert">{error}</p>}
+                    <div className="dashboard-management__actions">
+                        <button className="dashboard-management__primary" type="submit" disabled={saving}>{saving ? 'Registrando...' : 'Registrar venda'}</button>
+                        <button className="dashboard-management__secondary" type="button" onClick={onCancel} disabled={saving}>Cancelar</button>
+                    </div>
+                </>
+            )}
+        </form>
+    )
+}
+
+function SalesPanel({ sales, onChanged, notify }) {
+    const [busyId, setBusyId] = useState('')
+
+    async function refund(sale) {
+        const reason = window.prompt('Motivo da devolução com estorno:', 'Devolução do cliente')
+        if (reason === null || !reason.trim()) return
+        if (!window.confirm('Estornar esta venda e devolver os itens ao estoque?')) return
+
+        setBusyId(sale.id)
+        try {
+            await refundSale(sale.id, {
+                refundedAt: toFortalezaIso(fortalezaInputValue()),
+                reason: reason.trim()
+            })
+            notify('Venda estornada e itens devolvidos ao estoque.')
+            onChanged()
+        } catch (refundError) {
+            notify(getErrorMessage(refundError, 'Não foi possível devolver a venda.'))
+        } finally {
+            setBusyId('')
+        }
+    }
+
+    return (
+        <section className="dashboard-management__panel" aria-labelledby="finance-sales-title">
+            <div className="dashboard-management__panel-heading">
+                <h2 id="finance-sales-title">Vendas de produtos</h2>
+                <p>Estorno financeiro isolado não altera o estoque. Use “Devolver com estoque” para devolver os itens fisicamente.</p>
+            </div>
+            {sales.length === 0 ? (
+                <p className="dashboard-management__empty">Nenhuma venda de produto registrada neste período.</p>
+            ) : (
+                <ul className="finance-list">
+                    {sales.map((sale) => (
+                        <li key={sale.id}>
+                            <div className="finance-list__copy">
+                                <strong>{formatDateTime(sale.sold_at)}</strong>
+                                <span>{sale.payment_method}{sale.status === 'refunded' ? ' · devolvida' : ''}</span>
+                            </div>
+                            <span className="finance-list__amount">{formatMoney(sale.total_amount)}</span>
+                            <button className="dashboard-management__secondary" type="button" disabled={sale.status === 'refunded' || busyId === sale.id} onClick={() => refund(sale)}>
+                                {busyId === sale.id ? 'Processando...' : 'Devolver com estoque'}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
     )
 }
 
@@ -417,6 +629,9 @@ export default function Finance() {
     const [payments, setPayments] = useState([])
     const [expenses, setExpenses] = useState([])
     const [categories, setCategories] = useState([])
+    const [sales, setSales] = useState([])
+    const [saleProducts, setSaleProducts] = useState([])
+    const [saleProductsError, setSaleProductsError] = useState('')
     const [appointments, setAppointments] = useState([])
     const [appointmentsError, setAppointmentsError] = useState('')
     const [loadedKey, setLoadedKey] = useState('')
@@ -447,6 +662,7 @@ export default function Finance() {
                 setPayments(overview.payments)
                 setExpenses(overview.expenses)
                 setCategories(overview.categories)
+                setSales(overview.sales ?? [])
                 setError('')
                 setLoadedKey(requestKey)
             })
@@ -478,6 +694,25 @@ export default function Finance() {
         return () => { active = false }
     }, [from, to, periodInvalid])
 
+    useEffect(() => {
+        if (form !== 'sale') return undefined
+
+        let active = true
+        listProducts()
+            .then((products) => {
+                if (!active) return
+                setSaleProducts(products)
+                setSaleProductsError('')
+            })
+            .catch((loadError) => {
+                if (!active) return
+                setSaleProducts([])
+                setSaleProductsError(getErrorMessage(loadError, 'Não foi possível carregar os produtos.'))
+            })
+
+        return () => { active = false }
+    }, [form])
+
     function notify(text) {
         setMessage(text)
     }
@@ -507,7 +742,7 @@ export default function Finance() {
                 <div>
                     <p className="dashboard-eyebrow">Gestão</p>
                     <h1>Financeiro</h1>
-                    <p>Registros manuais de pagamentos, estornos e despesas. Nenhum valor de agendamento antigo é contabilizado.</p>
+                    <p>Pagamentos manuais, vendas de produtos, estornos e despesas. Pagamentos são a única fonte de receita.</p>
                 </div>
             </header>
 
@@ -552,6 +787,7 @@ export default function Finance() {
 
                     <div className="finance-actions">
                         <button className="dashboard-management__primary" type="button" onClick={() => { setEditingExpense(null); setRefundTarget(''); setForm('payment') }}>Registrar pagamento</button>
+                        <button className="dashboard-management__secondary" type="button" onClick={() => { setEditingExpense(null); setRefundTarget(''); setSaleProducts([]); setSaleProductsError(''); setForm('sale') }}>Registrar venda</button>
                         <button className="dashboard-management__secondary" type="button" onClick={openRefund} disabled={payments.length === 0}>Registrar estorno</button>
                         <button className="dashboard-management__secondary" type="button" onClick={() => { setEditingExpense(null); setForm('expense') }}>Registrar despesa</button>
                     </div>
@@ -563,6 +799,23 @@ export default function Finance() {
                             onCancel={() => setForm('')}
                             onSaved={saved}
                         />
+                    )}
+                    {form === 'sale' && (
+                        saleProductsError ? (
+                            <div className="dashboard-management__panel">
+                                <p className="finance-form__hint" role="alert">{saleProductsError}</p>
+                                <button className="dashboard-management__secondary" type="button" onClick={() => setForm('')}>Cancelar</button>
+                            </div>
+                        ) : saleProducts.length === 0 ? (
+                            <p className="dashboard-management__empty" role="status">Carregando produtos...</p>
+                        ) : (
+                            <SaleForm
+                                products={saleProducts}
+                                productsError={saleProductsError}
+                                onCancel={() => setForm('')}
+                                onSaved={saved}
+                            />
+                        )
                     )}
                     {form === 'refund' && (
                         <RefundForm
@@ -597,11 +850,16 @@ export default function Finance() {
                                         <li key={payment.id}>
                                             <div className="finance-list__copy">
                                                 <strong>{formatDateTime(payment.paid_at)}</strong>
-                                                <span>{payment.method}{payment.appointment_id ? ' · agendamento vinculado' : ''}</span>
+                                                <span>
+                                                    {payment.source_type === 'product_sale' ? 'Venda de produto' : payment.method}
+                                                    {payment.appointment_id ? ' · agendamento vinculado' : ''}
+                                                </span>
                                                 {payment.note && <small>{payment.note}</small>}
                                             </div>
                                             <span className="finance-list__amount">{formatMoney(payment.amount)}</span>
-                                            <button className="dashboard-management__secondary" type="button" onClick={() => openRefund(payment.id)}>Estornar</button>
+                                            <button className="dashboard-management__secondary" type="button" onClick={() => openRefund(payment.id)}>
+                                                {payment.source_type === 'product_sale' ? 'Estorno financeiro' : 'Estornar'}
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
@@ -632,6 +890,8 @@ export default function Finance() {
                             )}
                         </section>
                     </div>
+
+                    <SalesPanel sales={sales} onChanged={refresh} notify={notify} />
 
                     <CategoryManager categories={categories} onChanged={refresh} notify={notify} />
                 </>

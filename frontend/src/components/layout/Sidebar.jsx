@@ -7,6 +7,7 @@ const icons = {
     services: <><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="m8.1 8.1 12 12M14 14l6-6M8.1 15.9 12 12" /></>,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
     finance: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18m-13 5h3" /></>,
+    products: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
     business: <><rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V4h8v3M3 12h18m-11 0v2h4v-2" /></>,
     settings: <><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /><path d="m19.4 15 .1.1 1.2 1-1.2 2.1-1.5-.5a8 8 0 0 1-1.7 1l-.3 1.6h-2.4l-.3-1.6a8 8 0 0 1-1.7-1l-1.5.5-1.2-2.1 1.2-1a8 8 0 0 1 0-2l-1.2-1 1.2-2.1 1.5.5a8 8 0 0 1 1.7-1l.3-1.6H16l.3 1.6a8 8 0 0 1 1.7 1l1.5-.5 1.2 2.1-1.2 1a8 8 0 0 1-.1 1.9Z" transform="translate(-2 -2)" /></>
 }
@@ -18,7 +19,8 @@ const groups = [
         { label: 'Clientes', icon: 'users', to: '/dashboard/customers' },
         { label: 'Serviços', icon: 'services', to: '/dashboard/services' },
         { label: 'Horários', icon: 'clock', to: '/dashboard/working-hours' },
-        { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' }
+        { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' },
+        { label: 'Produtos', icon: 'products', to: '/dashboard/products' }
     ] },
     { title: 'Sistema', items: [
         { label: 'Meu negócio', icon: 'business', to: '/dashboard/business' },

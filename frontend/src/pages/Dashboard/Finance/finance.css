@@ -23,6 +23,14 @@
 .finance-form .dashboard-management__panel-heading { margin-bottom: 0; }
 .finance-form__hint { grid-column: 1 / -1; color: var(--color-danger); font-size: var(--font-size-xs); }
 
+.finance-sale-form .finance-sale-items, .finance-sale-form > button[type='button'], .finance-sale-form .finance-sale-total { grid-column: 1 / -1; }
+.finance-sale-form .dashboard-management__actions { grid-column: 1 / -1; }
+.finance-sale-items { display: grid; gap: var(--space-3); }
+.finance-sale-item { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; align-items: end; gap: var(--space-3); }
+.finance-sale-item > button { min-height: 2.75rem; margin-bottom: 0.15rem; white-space: nowrap; }
+.finance-sale-total { margin: 0; color: var(--color-muted); font-size: var(--font-size-sm); }
+.finance-sale-total strong { color: var(--color-foreground); font-variant-numeric: tabular-nums; }
+
 .finance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--space-4); }
 .finance-list { display: grid; margin: 0; padding: 0; list-style: none; }
 .finance-list li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--color-border); }
@@ -53,7 +61,8 @@
   .finance-period__fields { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
   .finance-metrics { gap: var(--space-2); }
   .finance-form { grid-template-columns: minmax(0, 1fr); }
-  .finance-form .dashboard-management__panel-heading, .finance-form [role='alert'], .finance-form .dashboard-management__actions { grid-column: auto; }
+  .finance-form .dashboard-management__panel-heading, .finance-form [role='alert'], .finance-form .dashboard-management__actions, .finance-sale-form .finance-sale-items, .finance-sale-form > button[type='button'], .finance-sale-form .finance-sale-total { grid-column: auto; }
+  .finance-sale-item { grid-template-columns: minmax(0, 1fr); }
   .finance-list li { flex-wrap: wrap; }
   .finance-list li > button { margin-left: auto; }
   .finance-category-list li { align-items: flex-start; flex-direction: column; }

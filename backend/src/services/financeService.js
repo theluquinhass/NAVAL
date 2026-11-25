@@ -1,5 +1,6 @@
 import { createUserClient } from '../config/supabase.js'
 import { getBarbershopIdForAuthenticatedUser } from './barbershopService.js'
+import { listSales } from './productService.js'
 
 const CATEGORIES_TABLE = 'expense_categories'
 const PAYMENTS_TABLE = 'payments'
@@ -35,13 +36,14 @@ function throwDatabaseError(error, { notFound, duplicate, invalid, failed }) {
 }
 
 export async function getFinanceOverview(token, userId, from, to) {
-    const [summary, payments, expenses, categories] = await Promise.all([
+    const [summary, payments, expenses, categories, sales] = await Promise.all([
         getFinanceSummary(token, userId, from, to),
         listPayments(token, userId, from, to),
         listExpenses(token, userId, from, to),
-        listCategories(token, userId)
+        listCategories(token, userId),
+        listSales(token, userId, from, to)
     ])
-    return { summary, payments, expenses, categories }
+    return { summary, payments, expenses, categories, sales }
 }
 
 export async function getFinanceSummary(token, userId, from, to) {
@@ -97,7 +99,7 @@ export async function listPayments(token, userId, from, to) {
     const { supabase, profileId } = await getContext(token, userId)
     const { data, error } = await supabase
         .from(PAYMENTS_TABLE)
-        .select('id, appointment_id, amount, paid_at, method, note, created_at')
+        .select('id, appointment_id, amount, paid_at, method, note, source_type, sale_id, created_at')
         .eq('profile_id', profileId)
         .gte('paid_at', from)
         .lt('paid_at', to)

@@ -28,6 +28,7 @@ mock.module('../src/services/financeService.js', {
         getFinanceOverview: (...args) => record('getFinanceOverview', args),
         getFinanceSummary: (...args) => record('getFinanceSummary', args),
         listPayments: (...args) => record('listPayments', args),
+        listSales: (...args) => record('listSales', args),
         createPayment: (...args) => record('createPayment', args),
         createRefund: (...args) => record('createRefund', args),
         listExpenses: (...args) => record('listExpenses', args),
