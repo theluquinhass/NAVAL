@@ -95,7 +95,7 @@ function reset() {
     clearProfileCache()
     lookupResult = { data: { id: 'shop-1' }, error: null }
     updateResult = {
-        data: { id: 'shop-1', name: 'NAVAL', barberName: 'Lucas Caetano', slug: 'naval', phone: '(85) 99999-1234' },
+        data: { id: 'shop-1', name: 'NAVAL', barberName: 'Lucas Caetano', slug: 'naval', phone: '(85) 99999-1234', sellsProducts: true },
         error: null
     }
 }
@@ -111,7 +111,7 @@ async function request(method, body, token = makeToken()) {
     })
 }
 
-const validBody = { barberName: 'Lucas Caetano', name: 'NAVAL', phone: '(85) 99999-1234', slug: 'NAVAL 24h' }
+const validBody = { barberName: 'Lucas Caetano', name: 'NAVAL', phone: '(85) 99999-1234', slug: 'NAVAL 24h', sellsProducts: true }
 
 test('rejects an unauthenticated profile update', async () => {
     reset()
@@ -143,7 +143,8 @@ test('updates the profile with a normalized slug and returns the phone', async (
         barber_name: 'Lucas Caetano',
         name: 'NAVAL',
         phone: '(85) 99999-1234',
-        slug: 'naval-24h'
+        slug: 'naval-24h',
+        sells_products: true
     })
     assert.deepEqual(calls.filter(([name]) => name === 'update:eq'), [
         ['update:eq', 'id', 'shop-1'],
@@ -175,7 +176,7 @@ test('returns 404 when the authenticated user has no profile', async () => {
 test('includes the phone when reading the profile', async () => {
     reset()
     lookupResult = {
-        data: { id: 'shop-1', name: 'NAVAL', barberName: 'Lucas Caetano', slug: 'naval', phone: '(85) 99999-1234' },
+        data: { id: 'shop-1', name: 'NAVAL', barberName: 'Lucas Caetano', slug: 'naval', phone: '(85) 99999-1234', sellsProducts: true },
         error: null
     }
 
@@ -184,5 +185,5 @@ test('includes the phone when reading the profile', async () => {
 
     assert.equal(response.status, 200)
     assert.deepEqual(body.profile, lookupResult.data)
-    assert.equal(calls.find(([name]) => name === 'lookup:select')[1], 'id, name, barberName:barber_name, slug, phone')
+    assert.equal(calls.find(([name]) => name === 'lookup:select')[1], 'id, name, barberName:barber_name, slug, phone, sellsProducts:sells_products')
 })

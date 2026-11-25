@@ -2,6 +2,7 @@ import {
     createProduct,
     createSale,
     deleteProduct,
+    getProductFinanceOverview,
     listMovements,
     listProducts,
     listSales,
@@ -20,6 +21,7 @@ import {
     validateSalePeriod,
     validateSaleRefundPayload
 } from '../validation/productValidation.js'
+import { validatePeriod as validateFinancePeriod } from '../validation/financeValidation.js'
 
 const NOT_FOUND_CODES = new Set([
     'BARBERSHOP_NOT_FOUND',
@@ -35,7 +37,17 @@ const CONFLICT_CODES = new Set([
     'REFUND_INVALID',
     'SALE_IDEMPOTENCY_CONFLICT'
 ])
-const INVALID_CODES = new Set(['INVALID_PRODUCT_DATA', 'SALE_ITEMS_INVALID'])
+const INVALID_CODES = new Set([
+    'INVALID_PRODUCT_DATA',
+    'SALE_ITEMS_INVALID',
+    'PRODUCT_COST_REQUIRED',
+    'STOCK_EXPENSE_INVALID'
+])
+
+const INVALID_MESSAGES = {
+    PRODUCT_COST_REQUIRED: 'Cadastre um custo maior que zero no produto antes de registrar uma entrada de estoque.',
+    STOCK_EXPENSE_INVALID: 'O valor da despesa dessa entrada excede o limite permitido.'
+}
 
 function handleProductError(error, res, action) {
     const message = error.message
@@ -46,7 +58,9 @@ function handleProductError(error, res, action) {
         return res.status(409).json({ error: 'Operação não permitida para o estado atual do estoque ou da venda.' })
     }
     if (INVALID_CODES.has(message)) {
-        return res.status(400).json({ error: 'Dados de produto, estoque ou venda inválidos.' })
+        return res.status(400).json({
+            error: INVALID_MESSAGES[message] ?? 'Dados de produto, estoque ou venda inválidos.'
+        })
     }
 
     console.error(`[products] ${message}`, error.cause?.code ?? '', error.cause?.message ?? '')
@@ -155,6 +169,23 @@ export async function getSalesController(req, res) {
     }
 }
 
+export async function getProductFinanceOverviewController(req, res) {
+    const validation = validateFinancePeriod(req.query)
+    if (validation.error) return validationError(res, validation)
+
+    try {
+        const overview = await getProductFinanceOverview(
+            req.accessToken,
+            req.user.id,
+            validation.period.from,
+            validation.period.to
+        )
+        return res.status(200).json(overview)
+    } catch (error) {
+        return handleProductError(error, res, 'buscar o financeiro dos produtos')
+    }
+}
+
 export async function postSaleController(req, res) {
     const validation = validateSalePayload(req.body)
     if (validation.error) return validationError(res, validation)
@@ -189,6 +220,7 @@ export default {
     getMovementsController,
     postMovementController,
     getSalesController,
+    getProductFinanceOverviewController,
     postSaleController,
     postSaleRefundController
 }

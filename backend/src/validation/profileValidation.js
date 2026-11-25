@@ -27,6 +27,9 @@ export function validateProfilePayload(body) {
     if (typeof body.slug !== 'string') {
         return { error: 'Informe o endereço do perfil.' }
     }
+    if (body.sellsProducts !== undefined && typeof body.sellsProducts !== 'boolean') {
+        return { error: 'A opção de vender produtos deve ser sim ou não.' }
+    }
 
     const slug = normalizeSlug(body.slug)
     if (slug.length === 0 || slug.length > 80 || !SLUG_PATTERN.test(slug)) {
@@ -38,7 +41,8 @@ export function validateProfilePayload(body) {
             barberName: body.barberName.trim(),
             name: body.name.trim(),
             phone: body.phone.trim(),
-            slug
+            slug,
+            sellsProducts: body.sellsProducts === true
         }
     }
 }

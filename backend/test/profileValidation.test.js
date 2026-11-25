@@ -13,7 +13,8 @@ test('accepts a valid profile payload', () => {
         barberName: '  Lucas Caetano  ',
         name: '  NAVAL  ',
         phone: ' (85) 99999-1234 ',
-        slug: ' Barbearia do Zé '
+        slug: ' Barbearia do Zé ',
+        sellsProducts: true
     })
 
     assert.deepEqual(result, {
@@ -21,9 +22,28 @@ test('accepts a valid profile payload', () => {
             barberName: 'Lucas Caetano',
             name: 'NAVAL',
             phone: '(85) 99999-1234',
-            slug: 'barbearia-do-ze'
+            slug: 'barbearia-do-ze',
+            sellsProducts: true
         }
     })
+})
+
+test('hides products by default when the selling option is omitted', () => {
+    const result = validateProfilePayload({
+        barberName: 'Lucas',
+        name: 'NAVAL',
+        phone: '123',
+        slug: 'naval'
+    })
+
+    assert.equal(result.payload.sellsProducts, false)
+    assert.match(validateProfilePayload({
+        barberName: 'Lucas',
+        name: 'NAVAL',
+        phone: '123',
+        slug: 'naval',
+        sellsProducts: 'sim'
+    }).error, /produtos/i)
 })
 
 test('keeps the update validator compatible', () => {

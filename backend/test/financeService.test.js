@@ -217,6 +217,43 @@ test('maps refund validation failures without deleting the original payment', as
     assert.equal(call.record.payment_id, ID)
 })
 
+test('exposes stock-purchase expenses and never accepts source fields from clients', async () => {
+    reset()
+    results.set('expenses:select', {
+        data: [{
+            id: 'e1',
+            amount: '100.00',
+            spent_at: FROM,
+            source_type: 'stock_entry',
+            inventory_movement_id: ID
+        }],
+        error: null
+    })
+
+    const expenses = await financeService.listExpenses('token-1', 'user-1', FROM, TO)
+    const readCall = calls.find((call) => call.table === 'expenses')
+    assert.equal(expenses[0].source_type, 'stock_entry')
+    assert.match(readCall.selected, /source_type/)
+    assert.match(readCall.selected, /inventory_movement_id/)
+
+    reset()
+    results.set('expenses:insert', { data: { id: 'e2' }, error: null })
+    await financeService.createExpense('token-1', 'user-1', {
+        categoryId: null,
+        description: 'Compra de estoque',
+        amount: '100.00',
+        spentAt: FROM,
+        paymentMethod: null,
+        note: null,
+        sourceType: 'stock_entry',
+        inventoryMovementId: ID
+    })
+
+    const insertCall = calls.find((call) => call.table === 'expenses')
+    assert.equal(Object.hasOwn(insertCall.record, 'source_type'), false)
+    assert.equal(Object.hasOwn(insertCall.record, 'inventory_movement_id'), false)
+})
+
 test('scopes expense updates and category deletion to the resolved profile', async () => {
     reset()
     results.set('expenses:update', { data: null, error: null })

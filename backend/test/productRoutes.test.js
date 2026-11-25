@@ -2,6 +2,7 @@ import { after, before, mock, test } from 'node:test'
 import assert from 'node:assert/strict'
 
 const ID = '8d8c9f3a-59f0-4d8c-9f0a-112233445566'
+const FROM = '2026-11-01T00:00:00-03:00'
 const SOLD_AT = '2026-11-25T10:00:00-03:00'
 const calls = []
 
@@ -32,6 +33,7 @@ mock.module('../src/services/productService.js', {
         listMovements: (...args) => record('listMovements', args),
         recordMovement: (...args) => record('recordMovement', args),
         listSales: (...args) => record('listSales', args),
+        getProductFinanceOverview: (...args) => record('getProductFinanceOverview', args),
         createSale: (...args) => record('createSale', args),
         refundSale: (...args) => record('refundSale', args)
     }
@@ -78,11 +80,31 @@ test('requires authentication on every product and sale endpoint', async () => {
     const products = await request('/products', { token: null })
     const movements = await request('/products/movements', { token: null })
     const sales = await request('/products/sales', { token: null })
+    const finance = await request(`/products/finance/overview?from=${encodeURIComponent(FROM)}&to=${encodeURIComponent(SOLD_AT)}`, { token: null })
 
     assert.equal(products.status, 401)
     assert.equal(movements.status, 401)
     assert.equal(sales.status, 401)
+    assert.equal(finance.status, 401)
     assert.equal(calls.length, 0)
+})
+
+test('returns the product finance overview for an authenticated period', async () => {
+    reset()
+    const overview = { summary: { grossRevenue: 30, purchaseExpenses: 100 }, sales: [], payments: [], refunds: [], purchases: [] }
+    implementation = { getProductFinanceOverview: () => overview }
+
+    const response = await request(`/products/finance/overview?from=${encodeURIComponent(FROM)}&to=${encodeURIComponent(SOLD_AT)}`)
+    assert.equal(response.status, 200)
+    assert.deepEqual(await response.json(), overview)
+    assert.deepEqual(calls[0], {
+        name: 'getProductFinanceOverview',
+        args: ['valid-token', 'user-1', FROM, SOLD_AT]
+    })
+
+    const invalid = await request('/products/finance/overview?from=ontem&to=hoje')
+    assert.equal(invalid.status, 400)
+    assert.equal(calls.length, 1)
 })
 
 test('rejects client-supplied tenant and stock fields on product creation', async () => {
@@ -160,6 +182,18 @@ test('maps insufficient stock to 409 and records a movement with the authenticat
         reason: null,
         note: null
     })
+})
+
+test('explains that stock entries require a product cost', async () => {
+    reset()
+    implementation = { recordMovement: () => { throw new Error('PRODUCT_COST_REQUIRED') } }
+    const response = await request('/products/movements', {
+        method: 'POST',
+        body: { productId: ID, movementType: 'entry', quantity: 10 }
+    })
+
+    assert.equal(response.status, 400)
+    assert.match((await response.json()).error, /custo maior que zero/)
 })
 
 test('creates a sale without trusting client prices and validates parameterized ids', async () => {

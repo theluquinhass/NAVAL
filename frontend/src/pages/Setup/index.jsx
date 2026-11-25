@@ -12,6 +12,7 @@ export default function Setup() {
     const [name, setName] = useState('')
     const [phone, setPhone] = useState('')
     const [slug, setSlug] = useState('')
+    const [sellsProducts, setSellsProducts] = useState(null)
     const [error, setError] = useState('')
     const [saving, setSaving] = useState(false)
 
@@ -28,7 +29,8 @@ export default function Setup() {
                 barberName: barberName.trim(),
                 name: name.trim(),
                 phone: phone.trim(),
-                slug: normalizeSlug(slug || name)
+                slug: normalizeSlug(slug || name),
+                sellsProducts: sellsProducts === true
             })
             navigate('/dashboard')
         } catch (requestError) {
@@ -113,6 +115,35 @@ export default function Setup() {
                         <span>Link público da sua barbearia</span>
                         <code>{publicUrl}</code>
                     </div>
+
+                    <fieldset className="auth-field auth-choice">
+                        <legend>Você também vende produtos?</legend>
+                        <p className="auth-choice__hint">Isso define quais ferramentas aparecem no seu dashboard. Você poderá mudar depois em Configurações.</p>
+                        <div className="auth-choice__options">
+                            <label className="auth-choice__option">
+                                <input
+                                    type="radio"
+                                    name="sellsProducts"
+                                    value="yes"
+                                    checked={sellsProducts === true}
+                                    onChange={() => { setSellsProducts(true); setError('') }}
+                                    required
+                                />
+                                <span><strong>Sim</strong><small>Ativa estoque, movimentações e financeiro de produtos.</small></span>
+                            </label>
+                            <label className="auth-choice__option">
+                                <input
+                                    type="radio"
+                                    name="sellsProducts"
+                                    value="no"
+                                    checked={sellsProducts === false}
+                                    onChange={() => { setSellsProducts(false); setError('') }}
+                                    required
+                                />
+                                <span><strong>Não</strong><small>Mostro apenas agendamentos, serviços e financeiro da barbearia.</small></span>
+                            </label>
+                        </div>
+                    </fieldset>
 
                     <button className="auth-submit" type="submit" disabled={saving}>
                         {saving ? 'Salvando...' : 'Salvar perfil'}

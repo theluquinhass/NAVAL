@@ -53,7 +53,7 @@ const supabase = {
     }
 }
 
-const payload = { barberName: 'Lucas Caetano', name: 'NAVAL', phone: '(85) 99999-1234', slug: 'naval' }
+const payload = { barberName: 'Lucas Caetano', name: 'NAVAL', phone: '(85) 99999-1234', slug: 'naval', sellsProducts: true }
 
 function reset() {
     calls.length = 0
@@ -80,13 +80,14 @@ test('updates only the authenticated user profile and invalidates the cached id'
         barber_name: payload.barberName,
         name: payload.name,
         phone: payload.phone,
-        slug: payload.slug
+        slug: payload.slug,
+        sells_products: payload.sellsProducts
     })
     assert.deepEqual(calls.filter(([name]) => name === 'update:eq'), [
         ['update:eq', 'id', 'shop-1'],
         ['update:eq', 'user_id', 'user-1']
     ])
-    assert.equal(calls.find(([name]) => name === 'update:select')[1], 'id, name, barberName:barber_name, slug, phone')
+    assert.equal(calls.find(([name]) => name === 'update:select')[1], 'id, name, barberName:barber_name, slug, phone, sellsProducts:sells_products')
 
     calls.length = 0
     await getBarbershopIdForAuthenticatedUser(supabase, 'user-1')

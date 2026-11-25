@@ -3,8 +3,15 @@ import { getBarbershopIdForAuthenticatedUser } from './barbershopService.js'
 
 const MOVEMENTS_TABLE = 'inventory_movements'
 const SALES_TABLE = 'sales'
+const PAYMENTS_TABLE = 'payments'
+const REFUNDS_TABLE = 'payment_refunds'
+const EXPENSES_TABLE = 'expenses'
 const MOVEMENT_COLUMNS = 'id, product_id, movement_type, direction, quantity, reason, note, sale_id, refund_id, created_by, created_at'
 const SALE_COLUMNS = 'id, sold_at, payment_method, status, total_amount'
+const FINANCE_PAYMENT_COLUMNS = 'id, sale_id, amount, paid_at, method, note, source_type, created_at'
+const FINANCE_REFUND_COLUMNS = 'id, payment_id, amount, refunded_at, reason, created_at'
+const FINANCE_EXPENSE_COLUMNS = 'id, description, amount, spent_at, note, source_type, inventory_movement_id, created_at'
+const TIME_ZONE = 'America/Fortaleza'
 
 const MESSAGE_CODES = [
     ['BARBERSHOP_NOT_FOUND', 'BARBERSHOP_NOT_FOUND'],
@@ -14,6 +21,8 @@ const MESSAGE_CODES = [
     ['ESTOQUE_INSUFICIENTE', 'ESTOQUE_INSUFICIENTE'],
     ['SALE_ITEMS_INVALID', 'SALE_ITEMS_INVALID'],
     ['REFUND_INVALID', 'REFUND_INVALID'],
+    ['PRODUCT_COST_REQUIRED', 'PRODUCT_COST_REQUIRED'],
+    ['STOCK_EXPENSE_INVALID', 'STOCK_EXPENSE_INVALID'],
     ['PRODUCT_NOT_FOUND', 'PRODUCT_NOT_FOUND']
 ]
 
@@ -21,6 +30,18 @@ async function getContext(token, userId) {
     const supabase = createUserClient(token)
     const profileId = await getBarbershopIdForAuthenticatedUser(supabase, userId)
     return { supabase, profileId }
+}
+
+function toCents(value) {
+    return Math.round(Number(value) * 100)
+}
+
+function fromCents(cents) {
+    return Number((cents / 100).toFixed(2))
+}
+
+function sumCents(rows, column) {
+    return rows.reduce((total, row) => total + toCents(row[column]), 0)
 }
 
 function throwRpcError(error, { failed, notFound = 'PRODUCT_NOT_FOUND', duplicate = 'PRODUCT_DUPLICATE', invalid = 'INVALID_PRODUCT_DATA' }) {
@@ -182,4 +203,85 @@ export async function refundSale(token, userId, saleId, payload) {
         throwRpcError(error, { failed: 'SALE_REFUND_FAILED' })
     }
     return data
+}
+
+export async function getProductFinanceOverview(token, userId, from, to) {
+    const { supabase, profileId } = await getContext(token, userId)
+    const [salesResult, paymentsResult, purchasesResult] = await Promise.all([
+        supabase
+            .from(SALES_TABLE)
+            .select(SALE_COLUMNS)
+            .eq('profile_id', profileId)
+            .gte('sold_at', from)
+            .lt('sold_at', to)
+            .order('sold_at', { ascending: false })
+            .limit(500),
+        supabase
+            .from(PAYMENTS_TABLE)
+            .select(FINANCE_PAYMENT_COLUMNS)
+            .eq('profile_id', profileId)
+            .eq('source_type', 'product_sale')
+            .gte('paid_at', from)
+            .lt('paid_at', to)
+            .order('paid_at', { ascending: false })
+            .limit(500),
+        supabase
+            .from(EXPENSES_TABLE)
+            .select(FINANCE_EXPENSE_COLUMNS)
+            .eq('profile_id', profileId)
+            .eq('source_type', 'stock_entry')
+            .gte('spent_at', from)
+            .lt('spent_at', to)
+            .order('spent_at', { ascending: false })
+            .limit(500)
+    ])
+
+    for (const result of [salesResult, paymentsResult, purchasesResult]) {
+        if (result.error) throw new Error('PRODUCT_FINANCE_READ_FAILED', { cause: result.error })
+    }
+
+    const sales = salesResult.data ?? []
+    const payments = paymentsResult.data ?? []
+    const purchases = purchasesResult.data ?? []
+    let refunds = []
+
+    if (payments.length > 0) {
+        const refundsResult = await supabase
+            .from(REFUNDS_TABLE)
+            .select(FINANCE_REFUND_COLUMNS)
+            .eq('profile_id', profileId)
+            .in('payment_id', payments.map((payment) => payment.id))
+            .order('refunded_at', { ascending: false })
+            .limit(500)
+
+        if (refundsResult.error) {
+            throw new Error('PRODUCT_FINANCE_READ_FAILED', { cause: refundsResult.error })
+        }
+        refunds = refundsResult.data ?? []
+    }
+
+    const grossCents = sumCents(payments, 'amount')
+    const refundsCents = sumCents(refunds, 'amount')
+    const purchasesCents = sumCents(purchases, 'amount')
+    const netCents = grossCents - refundsCents
+
+    return {
+        period: { from, to, timeZone: TIME_ZONE },
+        currency: 'BRL',
+        summary: {
+            grossRevenue: fromCents(grossCents),
+            refunds: fromCents(refundsCents),
+            netRevenue: fromCents(netCents),
+            purchaseExpenses: fromCents(purchasesCents),
+            balance: fromCents(netCents - purchasesCents),
+            salesCount: sales.length,
+            paymentsCount: payments.length,
+            refundsCount: refunds.length,
+            purchasesCount: purchases.length
+        },
+        sales,
+        payments,
+        refunds,
+        purchases
+    }
 }

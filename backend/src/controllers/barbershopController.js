@@ -15,6 +15,7 @@ export async function createProfile(req, res) {
             name: validatedPayload.name,
             slug: validatedPayload.slug,
             phone: validatedPayload.phone,
+            sells_products: validatedPayload.sellsProducts,
             user_id: req.user.id
         }
 

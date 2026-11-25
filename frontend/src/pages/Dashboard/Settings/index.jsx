@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext.jsx'
-import { useProfile } from '../../../hooks/useProfile.js'
+import { useProfile, useSetProfile } from '../../../hooks/useProfile.js'
 import { useTheme } from '../../../contexts/ThemeContext.jsx'
 import { supabase } from '../../../lib/supabase.js'
 import { updateProfile } from '../../../services/profileApi.js'
@@ -24,7 +24,8 @@ function profileToForm(profile) {
         barberName: profile?.barberName ?? profile?.name ?? '',
         name: profile?.name ?? '',
         phone: profile?.phone ?? '',
-        slug: profile?.slug ?? ''
+        slug: profile?.slug ?? '',
+        sellsProducts: Boolean(profile?.sellsProducts)
     }
 }
 
@@ -39,6 +40,7 @@ function Feedback({ value }) {
 
 function BusinessPanel({ activeTab }) {
     const profile = useProfile()
+    const setProfile = useSetProfile()
     const [form, setForm] = useState(() => profileToForm(profile))
     const [saving, setSaving] = useState(false)
     const [feedback, setFeedback] = useState(null)
@@ -74,10 +76,17 @@ function BusinessPanel({ activeTab }) {
                 barberName: form.barberName.trim(),
                 name: form.name.trim(),
                 phone: form.phone.trim(),
-                slug
+                slug,
+                sellsProducts: form.sellsProducts
             })
             setForm(profileToForm(updated))
-            setFeedback({ type: 'success', text: 'Dados do negócio atualizados.' })
+            setProfile?.(updated)
+            setFeedback({
+                type: 'success',
+                text: form.sellsProducts
+                    ? 'Dados atualizados. As ferramentas de produtos estão visíveis no menu.'
+                    : 'Dados atualizados. As ferramentas de produtos foram ocultadas do menu.'
+            })
         } catch (error) {
             setFeedback({ type: 'error', text: getErrorMessage(error, 'Não foi possível salvar os dados do negócio.') })
         } finally {
@@ -156,6 +165,19 @@ function BusinessPanel({ activeTab }) {
                         onChange={(event) => updateField('slug', event.target.value)}
                         onBlur={() => setForm((current) => ({ ...current, slug: normalizeSlug(current.slug) }))}
                     />
+                </label>
+
+                <label className="settings__choice" htmlFor="business-sells-products">
+                    <input
+                        id="business-sells-products"
+                        type="checkbox"
+                        checked={form.sellsProducts}
+                        onChange={(event) => updateField('sellsProducts', event.target.checked)}
+                    />
+                    <span className="settings__choice-copy">
+                        <strong>Vendo produtos na barbearia</strong>
+                        <small>Exibe estoque, movimentações e financeiro de produtos no menu. Ao desativar, os atalhos desaparecem, mas o histórico é preservado.</small>
+                    </span>
                 </label>
 
                 <div className="settings__public-link">

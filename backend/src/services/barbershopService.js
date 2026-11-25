@@ -1,6 +1,7 @@
 import { createUserClient } from "../config/supabase.js";
 
 const TABLE = 'barbershops'
+const PROFILE_COLUMNS = 'id, name, barberName:barber_name, slug, phone, sellsProducts:sells_products'
 const PROFILE_CACHE_TTL_MS = 30_000
 const MAX_ENTRIES = 500
 
@@ -52,7 +53,7 @@ export async function getBarbershopIdForUser(token, userId) {
 export function findProfileForUser(supabase, userId) {
     return supabase
         .from(TABLE)
-        .select('id, name, barberName:barber_name, slug, phone')
+        .select(PROFILE_COLUMNS)
         .eq('user_id', userId)
         .maybeSingle()
 }
@@ -65,11 +66,12 @@ export async function updateProfileForUser(supabase, userId, payload) {
             barber_name: payload.barberName,
             name: payload.name,
             phone: payload.phone,
-            slug: payload.slug
+            slug: payload.slug,
+            sells_products: payload.sellsProducts
         })
         .eq('id', profileId)
         .eq('user_id', userId)
-        .select('id, name, barberName:barber_name, slug, phone')
+        .select(PROFILE_COLUMNS)
         .maybeSingle()
 
     if (error) throw new Error('PROFILE_UPDATE_FAILED', { cause: error })

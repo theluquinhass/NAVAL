@@ -7,6 +7,7 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import GuestRoute from './routes/GuestRoute'
 import ProfileRoute from './routes/ProfileRoute'
 import SetupRoute from './routes/SetupRoute'
+import ProductsRoute from './routes/ProductsRoute'
 import Booking from './pages/Booking'
 import DashboardLayout from './layouts/DashboardLayout.jsx'
 import Services from './pages/Dashboard/Services'
@@ -15,6 +16,8 @@ import Agenda from './pages/Dashboard/Agenda'
 import Customers from './pages/Dashboard/Customers'
 import Finance from './pages/Dashboard/Finance'
 import Products from './pages/Dashboard/Products'
+import ProductsMovements from './pages/Dashboard/Products/Movements'
+import ProductsFinance from './pages/Dashboard/Products/Finance'
 import Settings from './pages/Dashboard/Settings'
 
 import { Routes, Route } from 'react-router-dom'
@@ -33,7 +36,9 @@ function App() {
       <Route path='/dashboard/agenda' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Agenda /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
       <Route path='/dashboard/customers' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Customers /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
       <Route path='/dashboard/finance' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Finance /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
-      <Route path='/dashboard/products' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Products /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/products' element={<ProtectedRoute><ProfileRoute><ProductsRoute><DashboardLayout><Products /></DashboardLayout></ProductsRoute></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/products/movements' element={<ProtectedRoute><ProfileRoute><ProductsRoute><DashboardLayout><ProductsMovements /></DashboardLayout></ProductsRoute></ProfileRoute></ProtectedRoute>} />
+      <Route path='/dashboard/products/finance' element={<ProtectedRoute><ProfileRoute><ProductsRoute><DashboardLayout><ProductsFinance /></DashboardLayout></ProductsRoute></ProfileRoute></ProtectedRoute>} />
       <Route path='/dashboard/business' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Settings /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
       <Route path='/dashboard/settings' element={<ProtectedRoute><ProfileRoute><DashboardLayout><Settings /></DashboardLayout></ProfileRoute></ProtectedRoute>} />
     </Routes>

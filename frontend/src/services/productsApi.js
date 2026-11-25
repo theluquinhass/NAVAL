@@ -33,6 +33,10 @@ export async function listSales(from, to) {
     return (await api.get('/products/sales', { params: { from, to } })).data.sales
 }
 
+export async function getProductFinanceOverview(from, to) {
+    return (await api.get('/products/finance/overview', { params: { from, to } })).data
+}
+
 export async function createSale(payload) {
     return (await api.post('/products/sales', payload)).data
 }

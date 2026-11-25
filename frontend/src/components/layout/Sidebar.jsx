@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useProfile } from '../../hooks/useProfile.js'
 
 const icons = {
     dashboard: <><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="11" width="7" height="10" rx="1.5" /><rect x="3" y="14" width="8" height="7" rx="1.5" /></>,
@@ -8,6 +9,7 @@ const icons = {
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
     finance: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18m-13 5h3" /></>,
     products: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
+    movements: <><path d="M4 7h13m0 0-3-3m3 3-3 3" /><path d="M20 17H7m0 0 3-3m-3 3 3 3" /></>,
     business: <><rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V4h8v3M3 12h18m-11 0v2h4v-2" /></>,
     settings: <><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /><path d="m19.4 15 .1.1 1.2 1-1.2 2.1-1.5-.5a8 8 0 0 1-1.7 1l-.3 1.6h-2.4l-.3-1.6a8 8 0 0 1-1.7-1l-1.5.5-1.2-2.1 1.2-1a8 8 0 0 1 0-2l-1.2-1 1.2-2.1 1.5.5a8 8 0 0 1 1.7-1l.3-1.6H16l.3 1.6a8 8 0 0 1 1.7 1l1.5-.5 1.2 2.1-1.2 1a8 8 0 0 1-.1 1.9Z" transform="translate(-2 -2)" /></>
 }
@@ -19,8 +21,12 @@ const groups = [
         { label: 'Clientes', icon: 'users', to: '/dashboard/customers' },
         { label: 'Serviços', icon: 'services', to: '/dashboard/services' },
         { label: 'Horários', icon: 'clock', to: '/dashboard/working-hours' },
-        { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' },
-        { label: 'Produtos', icon: 'products', to: '/dashboard/products' }
+        { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' }
+    ] },
+    { title: 'Produtos', items: [
+        { label: 'Estoque', icon: 'products', to: '/dashboard/products' },
+        { label: 'Movimentações', icon: 'movements', to: '/dashboard/products/movements' },
+        { label: 'Financeiro', icon: 'finance', to: '/dashboard/products/finance' }
     ] },
     { title: 'Sistema', items: [
         { label: 'Meu negócio', icon: 'business', to: '/dashboard/business' },
@@ -33,6 +39,9 @@ function Icon({ name }) {
 }
 
 export default function Sidebar({ isMobile, isOpen, onClose, sidebarRef, firstLinkRef }) {
+    const profile = useProfile()
+    const visibleGroups = groups.filter((group) => group.title !== 'Produtos' || profile?.sellsProducts)
+
     return (
         <aside
             id="naval-dashboard-sidebar"
@@ -49,7 +58,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, sidebarRef, firstLi
             </div>
 
             <nav className="dashboard-sidebar__nav" aria-label="Navegação principal">
-                {groups.map((group) => (
+                {visibleGroups.map((group) => (
                     <section className="dashboard-sidebar__group" key={group.title} aria-label={group.title}>
                         <h2 className="dashboard-sidebar__group-title">{group.title}</h2>
                         <div className="dashboard-sidebar__group-items">

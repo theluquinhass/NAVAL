@@ -163,7 +163,7 @@ export async function listExpenses(token, userId, from, to) {
     const { supabase, profileId } = await getContext(token, userId)
     const { data, error } = await supabase
         .from(EXPENSES_TABLE)
-        .select('id, category_id, description, amount, spent_at, payment_method, note, created_at')
+        .select('id, category_id, description, amount, spent_at, payment_method, note, source_type, inventory_movement_id, created_at')
         .eq('profile_id', profileId)
         .gte('spent_at', from)
         .lt('spent_at', to)
@@ -186,7 +186,7 @@ function expenseRecord(payload, profileId) {
     }
 }
 
-const EXPENSE_COLUMNS = 'id, category_id, description, amount, spent_at, payment_method, note, created_at, updated_at'
+const EXPENSE_COLUMNS = 'id, category_id, description, amount, spent_at, payment_method, note, source_type, inventory_movement_id, created_at, updated_at'
 
 export async function createExpense(token, userId, payload) {
     const { supabase, profileId } = await getContext(token, userId)

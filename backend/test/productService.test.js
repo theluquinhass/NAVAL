@@ -31,6 +31,10 @@ function queryFor(table, call) {
             call.filters.push([`${column} <`, value])
             return this
         },
+        in(column, values) {
+            call.filters.push([`${column} in`, values])
+            return this
+        },
         order(column, options) {
             call.order = { column, options }
             return this
@@ -170,6 +174,23 @@ test('maps stock conflicts and preserves the original database error', async () 
     )
 })
 
+test('maps a missing product cost to a domain error for stock entries', async () => {
+    reset()
+    const costError = { code: '22023', message: 'PRODUCT_COST_REQUIRED' }
+    results.set('rpc:products_record_movement', { data: null, error: costError })
+    await assert.rejects(
+        productService.recordMovement('token-1', 'user-1', {
+            productId: ID,
+            movementType: 'entry',
+            quantity: 10,
+            direction: null,
+            reason: null,
+            note: null
+        }),
+        (error) => error.message === 'PRODUCT_COST_REQUIRED' && error.cause === costError
+    )
+})
+
 test('creates sales through RPC without sending client-supplied money', async () => {
     reset()
     const result = { sale: { id: ID, total_amount: '25.00' }, paymentId: 'pay-1' }
@@ -232,6 +253,50 @@ test('scopes movements and sales to the authenticated profile', async () => {
         [`sold_at >=`, FROM],
         [`sold_at <`, TO]
     ])
+})
+
+test('builds a product finance overview from sales, sale payments, refunds and stock purchases', async () => {
+    reset()
+    results.set('sales:select', {
+        data: [{ id: ID, sold_at: FROM, status: 'completed', total_amount: '30.00' }],
+        error: null
+    })
+    results.set('payments:select', {
+        data: [{ id: 'pay-1', sale_id: ID, amount: '30.00', paid_at: FROM, source_type: 'product_sale' }],
+        error: null
+    })
+    results.set('payment_refunds:select', {
+        data: [{ id: 'refund-1', payment_id: 'pay-1', amount: '5.00', refunded_at: TO }],
+        error: null
+    })
+    results.set('expenses:select', {
+        data: [{ id: 'expense-1', amount: '100.00', spent_at: FROM, source_type: 'stock_entry' }],
+        error: null
+    })
+
+    const overview = await productService.getProductFinanceOverview('token-1', 'user-1', FROM, TO)
+
+    assert.deepEqual(overview.summary, {
+        grossRevenue: 30,
+        refunds: 5,
+        netRevenue: 25,
+        purchaseExpenses: 100,
+        balance: -75,
+        salesCount: 1,
+        paymentsCount: 1,
+        refundsCount: 1,
+        purchasesCount: 1
+    })
+    assert.equal(overview.sales.length, 1)
+    assert.equal(overview.payments[0].source_type, 'product_sale')
+    assert.equal(overview.purchases[0].source_type, 'stock_entry')
+
+    const paymentCall = calls.find((call) => call.table === 'payments')
+    const purchaseCall = calls.find((call) => call.table === 'expenses')
+    const refundCall = calls.find((call) => call.table === 'payment_refunds')
+    assert.ok(paymentCall.filters.some(([column, value]) => column === 'source_type' && value === 'product_sale'))
+    assert.ok(purchaseCall.filters.some(([column, value]) => column === 'source_type' && value === 'stock_entry'))
+    assert.deepEqual(refundCall.filters.find(([column]) => column === 'payment_id in')[1], ['pay-1'])
 })
 
 test('fails closed when the authenticated user has no barbershop', async () => {
