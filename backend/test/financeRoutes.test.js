@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 const ID = '8d8c9f3a-59f0-4d8c-9f0a-112233445566'
 const FROM = '2026-11-01T00:00:00-03:00'
 const TO = '2026-12-01T00:00:00-03:00'
+const RECENT = '2026-11-25T10:00:00-03:00'
 const calls = []
 
 let implementation
@@ -173,11 +174,14 @@ test('maps an invalid refund to HTTP 409 and validates ids on parameterized rout
     implementation = { createRefund: () => { throw new Error('REFUND_INVALID') } }
     const refund = await request('/finance/refunds', {
         method: 'POST',
-        body: { paymentId: ID, amount: '5.00', refundedAt: TO }
+        body: { paymentId: ID, amount: '5.00', refundedAt: RECENT }
     })
 
     assert.equal(refund.status, 409)
-    assert.match((await refund.json()).error, /inválida/)
+    assert.deepEqual(await refund.json(), {
+        error: 'Operação financeira inválida para os dados atuais.',
+        code: 'REFUND_INVALID'
+    })
 
     const invalidId = await request('/finance/categories/not-a-uuid', { method: 'DELETE' })
     assert.equal(invalidId.status, 400)
@@ -195,4 +199,39 @@ test('deletes a category with HTTP 204 and maps a missing record to HTTP 404', a
     implementation = { deleteCategory: () => { throw new Error('CATEGORY_NOT_FOUND') } }
     const missing = await request(`/finance/categories/${ID}`, { method: 'DELETE' })
     assert.equal(missing.status, 404)
+})
+
+test('returns a JSON 404 for unknown routes', async () => {
+    const response = await request('/rota-inexistente')
+    assert.equal(response.status, 404)
+    assert.deepEqual(await response.json(), { error: 'Rota não encontrada.', code: 'NOT_FOUND' })
+})
+
+test('returns a JSON error for malformed JSON bodies', async () => {
+    const response = await fetch(`${baseUrl}/finance/payments`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-token', 'Content-Type': 'application/json' },
+        body: '{'
+    })
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), { error: 'JSON inválido.', code: 'INVALID_JSON' })
+})
+
+test('only allows configured CORS origins', async () => {
+    reset()
+    const path = `/finance/summary?from=${encodeURIComponent(FROM)}&to=${encodeURIComponent(TO)}`
+
+    const allowed = await fetch(`${baseUrl}${path}`, {
+        headers: { Origin: 'http://localhost:5173', Authorization: 'Bearer valid-token' }
+    })
+    assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://localhost:5173')
+
+    const denied = await fetch(`${baseUrl}${path}`, {
+        headers: { Origin: 'https://evil.example', Authorization: 'Bearer valid-token' }
+    })
+    assert.equal(denied.status, 403)
+    assert.deepEqual(await denied.json(), {
+        error: 'Origem não permitida.',
+        code: 'CORS_ORIGIN_NOT_ALLOWED'
+    })
 })

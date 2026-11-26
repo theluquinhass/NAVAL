@@ -3,14 +3,25 @@ import assert from 'node:assert/strict'
 import { clearProfileCache } from '../src/services/barbershopService.js'
 
 const ID = '8d8c9f3a-59f0-4d8c-9f0a-112233445566'
+const KEY = 'b1b2c3d4-59f0-4d8c-9f0a-112233445566'
 const FROM = '2026-11-01T00:00:00-03:00'
 const TO = '2026-12-01T00:00:00-03:00'
 
 const calls = []
 const results = new Map()
 
-function resultFor(call) {
-    return results.get(`${call.table}:${call.mutation ?? 'select'}`) ?? { data: [], error: null }
+function resultFor(key, fallback) {
+    const value = results.get(key)
+    if (Array.isArray(value)) return value.length > 0 ? value.shift() : fallback
+    return value ?? fallback
+}
+
+function resultForCall(call) {
+    if (call.rpc) return resultFor(`rpc:${call.rpc}`, { data: [], error: null })
+    if (call.filters.some(([column]) => column === 'idempotency_key')) {
+        return resultFor(`${call.table}:idempotency`, { data: null, error: null })
+    }
+    return resultFor(`${call.table}:${call.mutation ?? 'select'}`, { data: [], error: null })
 }
 
 const supabase = {
@@ -18,8 +29,9 @@ const supabase = {
         const call = { table, filters: [] }
         calls.push(call)
         const query = {
-            select(columns) {
+            select(columns, options) {
                 call.selected = columns
+                call.selectOptions = options
                 return this
             },
             insert(record) {
@@ -56,17 +68,27 @@ const supabase = {
                 call.limit = count
                 return this
             },
+            range(start, end) {
+                call.range = [start, end]
+                return this
+            },
             single() {
-                return Promise.resolve(resultFor(call))
+                return Promise.resolve(resultForCall(call))
             },
             maybeSingle() {
-                return Promise.resolve(resultFor(call))
+                const { data, error } = resultForCall(call)
+                return Promise.resolve({ data: Array.isArray(data) ? data[0] ?? null : data, error })
             },
             then(resolve, reject) {
-                return Promise.resolve(resultFor(call)).then(resolve, reject)
+                return Promise.resolve(resultForCall(call)).then(resolve, reject)
             }
         }
         return query
+    },
+    rpc(name, args) {
+        const call = { rpc: name, args }
+        calls.push(call)
+        return Promise.resolve(resultForCall(call))
     }
 }
 
@@ -92,20 +114,33 @@ function reset() {
     calls.length = 0
     results.clear()
     results.set('barbershops:select', { data: { id: 'shop-1' }, error: null })
+    results.set('rpc:finance_period_totals', {
+        data: {
+            revenue_cents: '0',
+            payments_count: '0',
+            refunds_cents: '0',
+            refunds_count: '0',
+            expense_cents: '0',
+            expenses_count: '0'
+        },
+        error: null
+    })
     clearProfileCache()
 }
 
-test('sums all ledger tables in cents and reports the Fortaleza time zone', async () => {
+test('uses the totals RPC with an exclusive end date and converts cents with integer math', async () => {
     reset()
-    results.set('payments:select', {
-        data: [
-            { id: 'p1', amount: '30.00', paid_at: FROM },
-            { id: 'p2', amount: '12.50', paid_at: FROM }
-        ],
+    results.set('rpc:finance_period_totals', {
+        data: {
+            revenue_cents: '4250',
+            payments_count: '2',
+            refunds_cents: '500',
+            refunds_count: '1',
+            expense_cents: '1890',
+            expenses_count: '1'
+        },
         error: null
     })
-    results.set('payment_refunds:select', { data: [{ id: 'r1', amount: '5.00', refunded_at: FROM }], error: null })
-    results.set('expenses:select', { data: [{ id: 'e1', amount: '18.90', spent_at: FROM }], error: null })
 
     const summary = await financeService.getFinanceSummary('token-1', 'user-1', FROM, TO)
 
@@ -122,21 +157,11 @@ test('sums all ledger tables in cents and reports the Fortaleza time zone', asyn
         expensesCount: 1
     })
 
-    assert.equal(calls[0].table, 'barbershops')
-    assert.deepEqual(calls[0].filters, [['user_id', 'user-1']])
-    for (const [table, column] of [
-        ['payments', 'paid_at'],
-        ['payment_refunds', 'refunded_at'],
-        ['expenses', 'spent_at']
-    ]) {
-        const call = calls.find((entry) => entry.table === table)
-        assert.ok(call, `missing query on ${table}`)
-        assert.deepEqual(call.filters, [
-            ['profile_id', 'shop-1'],
-            [`${column} >=`, FROM],
-            [`${column} <`, TO]
-        ])
-    }
+    assert.deepEqual(calls.find((call) => call.rpc === 'finance_period_totals'), {
+        rpc: 'finance_period_totals',
+        args: { p_profile_id: 'shop-1', p_from: FROM, p_to: TO }
+    })
+    assert.equal(calls.some((call) => call.table === 'payments'), false)
 })
 
 test('returns zeroed amounts when there are no records in the period', async () => {
@@ -148,6 +173,7 @@ test('returns zeroed amounts when there are no records in the period', async () 
     assert.equal(summary.netRevenue, 0)
     assert.equal(summary.expenses, 0)
     assert.equal(summary.balance, 0)
+    assert.equal(summary.paymentsCount, 0)
 })
 
 test('resolves the profile from the authenticated user before recording a payment', async () => {
@@ -167,8 +193,9 @@ test('resolves the profile from the authenticated user before recording a paymen
     assert.equal(calls[0].table, 'barbershops')
     assert.equal(calls[1].table, 'payments')
     assert.deepEqual(Object.keys(calls[1].record).sort(), [
-        'amount', 'appointment_id', 'method', 'note', 'paid_at', 'profile_id'
+        'amount', 'appointment_id', 'idempotency_key', 'method', 'note', 'paid_at', 'profile_id'
     ])
+    assert.equal(calls[1].record.idempotency_key, null)
     assert.equal(calls[1].record.profile_id, 'shop-1')
     assert.equal(calls[1].record.amount, '12.35')
     assert.equal(calls[1].record.appointment_id, ID)
@@ -215,6 +242,54 @@ test('maps refund validation failures without deleting the original payment', as
     assert.equal(call.mutation, 'insert')
     assert.equal(call.record.profile_id, 'shop-1')
     assert.equal(call.record.payment_id, ID)
+    assert.equal(call.record.idempotency_key, null)
+})
+
+test('returns the original payment when the idempotency key was already used', async () => {
+    reset()
+    const original = { id: 'pay-existing', amount: '12.35' }
+    results.set('payments:idempotency', { data: original, error: null })
+
+    const payment = await financeService.createPayment('token-1', 'user-1', {
+        amount: '12.35', paidAt: FROM, method: 'Pix', idempotencyKey: KEY
+    })
+
+    assert.deepEqual(payment, original)
+    assert.equal(calls.some((call) => call.table === 'payments' && call.mutation === 'insert'), false)
+    const lookup = calls.find((call) => call.table === 'payments')
+    assert.deepEqual(lookup.filters, [['profile_id', 'shop-1'], ['idempotency_key', KEY]])
+})
+
+test('re-reads the original record after a uniqueness race on payments and refunds', async () => {
+    reset()
+    const originalPayment = { id: 'pay-existing', amount: '12.35' }
+    results.set('payments:insert', { data: null, error: { code: '23505', message: 'duplicate' } })
+    // The first lookup happens before the insert (no row yet); the second one
+    // races with it and sees the row created by the other request.
+    results.set('payments:idempotency', [
+        { data: null, error: null },
+        { data: originalPayment, error: null }
+    ])
+
+    const payment = await financeService.createPayment('token-1', 'user-1', {
+        amount: '12.35', paidAt: FROM, method: 'Pix', idempotencyKey: KEY
+    })
+    assert.deepEqual(payment, originalPayment)
+    assert.equal(calls.filter((call) => call.table === 'payments' && call.mutation !== 'insert').length, 2)
+
+    reset()
+    const originalRefund = { id: 'refund-existing', amount: '5.00' }
+    results.set('payment_refunds:insert', { data: null, error: { code: '23505', message: 'duplicate' } })
+    results.set('payment_refunds:idempotency', [
+        { data: null, error: null },
+        { data: originalRefund, error: null }
+    ])
+
+    const refund = await financeService.createRefund('token-1', 'user-1', {
+        paymentId: ID, amount: '5.00', refundedAt: TO, idempotencyKey: KEY
+    })
+    assert.deepEqual(refund, originalRefund)
+    assert.equal(calls.filter((call) => call.table === 'payment_refunds' && call.mutation !== 'insert').length, 2)
 })
 
 test('exposes stock-purchase expenses and never accepts source fields from clients', async () => {
@@ -235,6 +310,7 @@ test('exposes stock-purchase expenses and never accepts source fields from clien
     assert.equal(expenses[0].source_type, 'stock_entry')
     assert.match(readCall.selected, /source_type/)
     assert.match(readCall.selected, /inventory_movement_id/)
+    assert.deepEqual(readCall.selectOptions, { count: 'exact' })
 
     reset()
     results.set('expenses:insert', { data: { id: 'e2' }, error: null })
@@ -252,6 +328,17 @@ test('exposes stock-purchase expenses and never accepts source fields from clien
     const insertCall = calls.find((call) => call.table === 'expenses')
     assert.equal(Object.hasOwn(insertCall.record, 'source_type'), false)
     assert.equal(Object.hasOwn(insertCall.record, 'inventory_movement_id'), false)
+})
+
+test('ranges list queries and reports the exact count on request', async () => {
+    reset()
+    const page = { limit: 25, offset: 50 }
+    results.set('payments:select', { data: [{ id: 'p1' }], count: 120, error: null })
+
+    const result = await financeService.listPayments('token-1', 'user-1', FROM, TO, page, { withCount: true })
+    const call = calls.find((entry) => entry.table === 'payments')
+    assert.deepEqual(result, { rows: [{ id: 'p1' }], count: 120 })
+    assert.deepEqual(call.range, [50, 74])
 })
 
 test('scopes expense updates and category deletion to the resolved profile', async () => {
@@ -280,8 +367,30 @@ test('scopes expense updates and category deletion to the resolved profile', asy
     assert.deepEqual(deleteCall.filters, [['id', ID], ['profile_id', 'shop-1']])
 })
 
+test('maps a 22023 expense update failure to a stock-entry conflict', async () => {
+    reset()
+    const databaseError = { code: '22023', message: 'cannot change stock entry fields' }
+    results.set('expenses:update', { data: null, error: databaseError })
+
+    await assert.rejects(
+        financeService.updateExpense('token-1', 'user-1', ID, {
+            categoryId: null,
+            description: 'Cafeina',
+            amount: '18.90',
+            spentAt: FROM,
+            paymentMethod: null,
+            note: null
+        }),
+        (error) => error.message === 'STOCK_EXPENSE_CONFLICT' && error.cause === databaseError
+    )
+})
+
 test('includes product sales in the finance overview without changing revenue sources', async () => {
     reset()
+    results.set('rpc:finance_period_totals', {
+        data: { revenue_cents: '3000', payments_count: '1', refunds_cents: '0', refunds_count: '0', expense_cents: '0', expenses_count: '0' },
+        error: null
+    })
     results.set('payments:select', {
         data: [{ id: 'p1', amount: '30.00', paid_at: FROM, source_type: 'product_sale', sale_id: ID }],
         error: null
@@ -293,7 +402,7 @@ test('includes product sales in the finance overview without changing revenue so
     assert.equal(overview.summary.revenue, 30)
     assert.deepEqual(overview.sales, [{ id: ID, total_amount: '30.00', sold_at: FROM }])
     assert.equal(overview.payments[0].source_type, 'product_sale')
-    assert.equal(calls.filter((call) => call.table === 'payments').length >= 2, true)
+    assert.equal(calls.filter((call) => call.table === 'payments').length >= 1, true)
 })
 
 test('fails closed when the authenticated user has no barbershop', async () => {

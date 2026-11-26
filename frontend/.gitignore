@@ -1,2 +1,15 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Build output and reports
+dist/
+coverage/
+
+# Logs and OS files
+*.log
+.DS_Store
+
+# Environment variables
 .env
+.env.*
+!.env.example

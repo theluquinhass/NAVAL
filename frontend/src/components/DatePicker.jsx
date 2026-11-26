@@ -1,16 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { fortalezaToday } from '../utils/dashboard.js'
 import './DatePicker.css'
 
-const TIME_ZONE = 'America/Fortaleza'
 const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
 function getToday() {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(new Date())
+    return fortalezaToday()
 }
 
 function formatDate(value) {

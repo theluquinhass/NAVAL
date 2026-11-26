@@ -5,24 +5,11 @@ import {
     listCustomers,
     updateCustomer
 } from '../../../services/customersApi.js'
+import { formatDateTime, getErrorMessage } from '../../../utils/dashboard.js'
 import '../management.css'
 import './customers.css'
 
 const emptyForm = { name: '', phone: '' }
-
-function getErrorMessage(error, fallback) {
-    if (error.response?.status === 401) return 'Sua sessão expirou. Entre novamente para continuar.'
-    return error.response?.data?.error || error.message || fallback
-}
-
-function formatDateTime(value) {
-    if (!value) return 'Data não informada'
-    return new Intl.DateTimeFormat('pt-BR', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: 'America/Fortaleza'
-    }).format(new Date(value))
-}
 
 function getStatus(status) {
     if (status === 'confirmed') return { label: 'Confirmado', className: 'customers__status--confirmed' }

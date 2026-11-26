@@ -15,8 +15,9 @@ function resultFor(key) {
 
 function queryFor(table, call) {
     return {
-        select(columns) {
+        select(columns, options) {
             call.selected = columns
+            call.selectOptions = options
             return this
         },
         eq(column, value) {
@@ -41,6 +42,10 @@ function queryFor(table, call) {
         },
         limit(count) {
             call.limit = count
+            return this
+        },
+        range(start, end) {
+            call.range = [start, end]
             return this
         },
         single() {
@@ -243,6 +248,7 @@ test('scopes movements and sales to the authenticated profile', async () => {
     const movements = await productService.listMovements('token-1', 'user-1', ID)
     assert.equal(movements.length, 1)
     assert.deepEqual(calls[1].filters, [['profile_id', 'shop-1'], ['product_id', ID]])
+    assert.deepEqual(calls[1].range, [0, 499])
 
     reset()
     results.set('sales:select', { data: [{ id: ID }], error: null })
@@ -257,6 +263,18 @@ test('scopes movements and sales to the authenticated profile', async () => {
 
 test('builds a product finance overview from sales, sale payments, refunds and stock purchases', async () => {
     reset()
+    results.set('rpc:products_finance_period_totals', {
+        data: {
+            gross_revenue_cents: '3000',
+            payments_count: '1',
+            refunds_cents: '500',
+            refunds_count: '1',
+            purchase_expenses_cents: '10000',
+            purchases_count: '1',
+            sales_count: '1'
+        },
+        error: null
+    })
     results.set('sales:select', {
         data: [{ id: ID, sold_at: FROM, status: 'completed', total_amount: '30.00' }],
         error: null
@@ -294,9 +312,15 @@ test('builds a product finance overview from sales, sale payments, refunds and s
     const paymentCall = calls.find((call) => call.table === 'payments')
     const purchaseCall = calls.find((call) => call.table === 'expenses')
     const refundCall = calls.find((call) => call.table === 'payment_refunds')
+    assert.deepEqual(calls.find((call) => call.rpc === 'products_finance_period_totals'), {
+        rpc: 'products_finance_period_totals',
+        args: { p_profile_id: 'shop-1', p_from: FROM, p_to: TO }
+    })
     assert.ok(paymentCall.filters.some(([column, value]) => column === 'source_type' && value === 'product_sale'))
     assert.ok(purchaseCall.filters.some(([column, value]) => column === 'source_type' && value === 'stock_entry'))
     assert.deepEqual(refundCall.filters.find(([column]) => column === 'payment_id in')[1], ['pay-1'])
+    assert.ok(refundCall.filters.some(([column, value]) => column === 'refunded_at >=' && value === FROM))
+    assert.ok(refundCall.filters.some(([column, value]) => column === 'refunded_at <' && value === TO))
 })
 
 test('fails closed when the authenticated user has no barbershop', async () => {

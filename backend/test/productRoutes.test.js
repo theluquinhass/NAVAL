@@ -7,6 +7,19 @@ const SOLD_AT = '2026-11-25T10:00:00-03:00'
 const calls = []
 
 let implementation
+let sellsProducts = true
+
+const barbershopQuery = {
+    select() {
+        return this
+    },
+    eq() {
+        return this
+    },
+    maybeSingle() {
+        return Promise.resolve({ data: { sells_products: sellsProducts }, error: null })
+    }
+}
 
 mock.module('../src/config/supabase.js', {
     namedExports: {
@@ -18,7 +31,13 @@ mock.module('../src/config/supabase.js', {
                 }
             }
         },
-        createUserClient: (token) => ({ accessToken: token }),
+        createUserClient: (token) => ({
+            accessToken: token,
+            from(table) {
+                if (table !== 'barbershops') throw new Error(`unexpected table: ${table}`)
+                return barbershopQuery
+            }
+        }),
         createPublicClient: () => ({})
     }
 })
@@ -62,6 +81,7 @@ after(async () => {
 function reset() {
     calls.length = 0
     implementation = null
+    sellsProducts = true
 }
 
 async function request(path, { method = 'GET', token = 'valid-token', body } = {}) {
@@ -89,6 +109,30 @@ test('requires authentication on every product and sale endpoint', async () => {
     assert.equal(calls.length, 0)
 })
 
+test('blocks product endpoints when the barbershop does not sell products', async () => {
+    reset()
+    sellsProducts = false
+    const response = await request('/products')
+
+    assert.equal(response.status, 403)
+    assert.deepEqual(await response.json(), {
+        error: 'Esta barbearia não possui vendas de produtos habilitadas.',
+        code: 'SELLS_PRODUCTS_REQUIRED'
+    })
+    assert.equal(calls.length, 0)
+})
+
+test('validates pagination on product list endpoints', async () => {
+    reset()
+    const response = await request('/products/movements?limit=1001')
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), {
+        error: 'O campo limit deve estar entre 1 e 1000.',
+        code: 'VALIDATION_ERROR'
+    })
+    assert.equal(calls.length, 0)
+})
+
 test('returns the product finance overview for an authenticated period', async () => {
     reset()
     const overview = { summary: { grossRevenue: 30, purchaseExpenses: 100 }, sales: [], payments: [], refunds: [], purchases: [] }
@@ -99,7 +143,7 @@ test('returns the product finance overview for an authenticated period', async (
     assert.deepEqual(await response.json(), overview)
     assert.deepEqual(calls[0], {
         name: 'getProductFinanceOverview',
-        args: ['valid-token', 'user-1', FROM, SOLD_AT]
+        args: ['valid-token', 'user-1', FROM, SOLD_AT, { limit: 500, offset: 0 }]
     })
 
     const invalid = await request('/products/finance/overview?from=ontem&to=hoje')

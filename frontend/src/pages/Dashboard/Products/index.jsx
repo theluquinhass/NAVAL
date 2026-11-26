@@ -114,42 +114,43 @@ function ProductForm({ product, onCancel, onSaved }) {
 export default function Products() {
     const navigate = useNavigate()
     const [products, setProducts] = useState([])
-    const [loadedKey, setLoadedKey] = useState('')
+    const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
     const [form, setForm] = useState('')
     const [editingProduct, setEditingProduct] = useState(null)
     const [busyId, setBusyId] = useState('')
-    const [refreshKey, setRefreshKey] = useState(0)
 
-    const refresh = useCallback(() => setRefreshKey((current) => current + 1), [])
-    const requestKey = String(refreshKey)
-    const loading = loadedKey !== requestKey
+    const loadProducts = useCallback(async (isActive = () => true) => {
+        try {
+            const nextProducts = await listProducts()
+            if (isActive()) {
+                setProducts(nextProducts)
+                setError('')
+            }
+        } catch (loadError) {
+            if (!isActive()) return
+            setProducts([])
+            setError(getErrorMessage(loadError, 'Não foi possível carregar os produtos.'))
+        } finally {
+            if (isActive()) setLoading(false)
+        }
+    }, [])
 
     useEffect(() => {
         let active = true
-        listProducts()
-            .then((nextProducts) => {
-                if (!active) return
-                setProducts(nextProducts)
-                setError('')
-            })
-            .catch((loadError) => {
-                if (!active) return
-                setError(getErrorMessage(loadError, 'Não foi possível carregar os produtos.'))
-            })
-            .finally(() => {
-                if (active) setLoadedKey(requestKey)
-            })
-
+        // State updates happen after the request resolves, not during the effect body.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadProducts(() => active)
         return () => { active = false }
-    }, [refreshKey, requestKey])
+    }, [loadProducts])
+
 
     function saved(text) {
         setMessage(text)
         setForm('')
         setEditingProduct(null)
-        refresh()
+        loadProducts()
     }
 
     function openMovements(productId = '') {
@@ -163,7 +164,7 @@ export default function Products() {
         try {
             await setProductActive(product.id, !product.is_active)
             setMessage(product.is_active ? 'Produto desativado.' : 'Produto ativado.')
-            refresh()
+            loadProducts()
         } catch (toggleError) {
             setError(getErrorMessage(toggleError, 'Não foi possível atualizar o produto.'))
         } finally {
@@ -178,7 +179,7 @@ export default function Products() {
         try {
             await deleteProduct(product.id)
             setMessage('Produto excluído.')
-            refresh()
+            loadProducts()
         } catch (removeError) {
             setError(getErrorMessage(removeError, 'Não foi possível excluir o produto.'))
         } finally {
@@ -195,7 +196,15 @@ export default function Products() {
             </header>
 
             {message && <p className="dashboard-management__notice" role="status">{message}</p>}
-            {error && <p className="products-error" role="alert">{error}</p>}
+            {error && (
+                <div className="products-error" role="alert">
+                    <p>{error}</p>
+                    <button className="dashboard-management__secondary" type="button" onClick={() => {
+                        setLoading(true)
+                        loadProducts()
+                    }}>Tentar novamente</button>
+                </div>
+            )}
 
             <div className="products-actions">
                 <button className="dashboard-management__primary" type="button" onClick={() => { setEditingProduct(null); setForm('product') }}>Novo produto</button>

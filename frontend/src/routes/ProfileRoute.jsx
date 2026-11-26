@@ -1,35 +1,53 @@
 import { useEffect, useState } from "react";
-import api from '../services/api.js'
 import { Navigate } from "react-router-dom";
 import { ProfileProvider } from "../contexts/ProfileProvider.jsx";
+import api from '../services/api.js'
+import { getErrorMessage } from '../utils/dashboard.js'
 
 const ProfileRoute = ({ children }) => {
     const [profile, setProfile] = useState(null)
     const [profileLoading, setProfileLoading] = useState(true)
-    const [profileError, setProfileError] = useState(false)
+    const [profileError, setProfileError] = useState('')
+    const [retryKey, setRetryKey] = useState(0)
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const response = await api.get('/profile')
-                setProfile(response.data.profile)
-            } catch (error) {
-                console.error('Erro ao buscar perfil:', error)
-                setProfileError(true)
-            } finally {
-                setProfileLoading(false)
-            }
-        }
+        let active = true
 
-        fetchProfile()
-    }, [])
+        api.get('/profile')
+            .then((response) => {
+                if (active) setProfile(response.data.profile)
+            })
+            .catch((requestError) => {
+                if (!active) return
+                setProfile(null)
+                setProfileError(getErrorMessage(requestError, 'Não foi possível carregar os dados da barbearia.'))
+            })
+            .finally(() => { if (active) setProfileLoading(false) })
 
-    if(profileLoading){
-        return <p>Carregando...</p>
+        return () => { active = false }
+    }, [retryKey])
+
+    if (profileLoading) {
+        return <p className="dashboard-loading" role="status">Carregando dados da barbearia...</p>
     }
-    
-    if(profileError){
-        return <p>Error de Conexao!</p>
+
+    if (profileError) {
+        return (
+            <section className="dashboard-panel dashboard-error" role="alert">
+                <p>Não foi possível carregar os dados da barbearia. {profileError}</p>
+                <button
+                    className="dashboard-retry"
+                    type="button"
+                    onClick={() => {
+                        setProfileLoading(true)
+                        setProfileError('')
+                        setRetryKey((current) => current + 1)
+                    }}
+                >
+                    Tentar novamente
+                </button>
+            </section>
+        )
     }
 
     if (!profile) {

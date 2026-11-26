@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { AuthContext } from "./authContext.js";
 import { supabase } from "../lib/supabase";
-
-const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
@@ -15,7 +14,6 @@ export function AuthProvider({ children }) {
                 if (error) throw error
                 setSession(session)
                 setUser(session?.user ?? null)
-                console.log(session)
             } catch (error) {
                 console.error("Erro ao buscar sessao", error.message)
                 setSession(null)
@@ -24,7 +22,6 @@ export function AuthProvider({ children }) {
                 setLoading(false)
             }
         }
-
 
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session)
@@ -45,14 +42,9 @@ export function AuthProvider({ children }) {
         signOut: () => supabase.auth.signOut(),
     }
 
-
     return (
         <AuthContext.Provider value={value}>
             {!loading && children}
         </AuthContext.Provider>
     )
-}
-
-export const useAuth = () => {
-    return useContext(AuthContext)
 }

@@ -139,7 +139,10 @@ test('returns a generic HTTP 500 and logs the original database error', async ()
     try {
         const response = await postAppointment({ body: validPayload })
         assert.equal(response.status, 500)
-        assert.deepEqual(await response.json(), { error: 'Não foi possível concluir a operação.' })
+        assert.deepEqual(await response.json(), {
+            error: 'Não foi possível concluir a operação.',
+            code: 'SCHEDULING_ACTION_FAILED'
+        })
     } finally {
         log.mock.restore()
     }

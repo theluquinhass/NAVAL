@@ -9,17 +9,29 @@ import {
 import { createUserClient } from '../config/supabase.js'
 import { validateAppointmentPayload } from '../validation/appointmentValidation.js'
 import { validateWorkingHoursRows } from '../validation/workingHoursValidation.js'
+import { isStrictCalendarDate, isStrictIsoDateTime, isUuid, validatePagination } from '../validation/shared.js'
 
 function internalError(res, error) {
     const message = error.message
     console.error(`[scheduling] ${message}`, error.cause?.code ?? '', error.cause?.message ?? '')
     if (message === 'BARBERSHOP_NOT_FOUND' || message === 'SERVICE_NOT_FOUND') {
-        return res.status(404).json({ error: 'Barbearia ou serviço não encontrado.' })
+        return res.status(404).json({ error: 'Barbearia ou serviço não encontrado.', code: message })
     }
     if (message === 'SLOT_UNAVAILABLE' || message === 'SLOT_TAKEN') {
-        return res.status(409).json({ error: 'Esse horário não está mais disponível.' })
+        return res.status(409).json({ error: 'Esse horário não está mais disponível.', code: message })
     }
-    return res.status(500).json({ error: 'Não foi possível concluir a operação.' })
+    const databaseCode = error.cause?.code ?? error.code
+    if (databaseCode === '22007' || databaseCode === '22023') {
+        return res.status(400).json({
+            error: 'Os dados informados para o agendamento são inválidos.',
+            code: 'INVALID_APPOINTMENT_DATA'
+        })
+    }
+    return res.status(500).json({ error: 'Não foi possível concluir a operação.', code: 'SCHEDULING_ACTION_FAILED' })
+}
+
+function validationError(res, error) {
+    return res.status(400).json({ error, code: 'VALIDATION_ERROR' })
 }
 
 export async function getWorkingHoursController(req, res) {
@@ -33,9 +45,9 @@ export async function getWorkingHoursController(req, res) {
 export async function putWorkingHoursController(req, res) {
     const rows = req.body?.workingHours
     const validation = validateWorkingHoursRows(rows)
-    if (validation.error) return res.status(400).json({ error: validation.error })
+    if (validation.error) return validationError(res, validation.error)
     if (req.body?.confirmConflicts !== undefined && typeof req.body.confirmConflicts !== 'boolean') {
-        return res.status(400).json({ error: 'Confirmação de conflitos inválida.' })
+        return validationError(res, 'Confirmação de conflitos inválida.')
     }
     try {
         const workingHours = await saveWorkingHours(
@@ -60,12 +72,20 @@ export async function putWorkingHoursController(req, res) {
 
 export async function getAppointmentsController(req, res) {
     const { from, to } = req.query
-    if (!from || !to || !Number.isFinite(Date.parse(from)) || !Number.isFinite(Date.parse(to)) || Date.parse(from) >= Date.parse(to)) {
-        return res.status(400).json({ error: 'Informe um intervalo de datas válido.' })
+    if (!isStrictIsoDateTime(from) || !isStrictIsoDateTime(to) || Date.parse(from) >= Date.parse(to)) {
+        return validationError(res, 'Informe um intervalo de datas válido.')
     }
+    const paginationValidation = validatePagination(req.query)
+    if (paginationValidation.error) return validationError(res, paginationValidation.error)
+
     try {
-        const appointments = await listAppointments(req.accessToken, req.user.id, from, to)
-        return res.status(200).json({ appointments })
+        const result = await listAppointments(
+            req.accessToken, req.user.id, from, to, paginationValidation.pagination, { withCount: true }
+        )
+        const rows = Array.isArray(result) ? result : result?.rows ?? []
+        const count = Array.isArray(result) ? result.length : result?.count
+        if (typeof count === 'number') res.setHeader('X-Total-Count', String(count))
+        return res.status(200).json({ appointments: rows })
     } catch (error) {
         return internalError(res, error)
     }
@@ -73,7 +93,7 @@ export async function getAppointmentsController(req, res) {
 
 export async function postPrivateAppointmentController(req, res) {
     const validation = validateAppointmentPayload(req.body)
-    if (validation.error) return res.status(400).json({ error: validation.error })
+    if (validation.error) return validationError(res, validation.error)
 
     try {
         const supabase = createUserClient(req.accessToken)
@@ -86,8 +106,11 @@ export async function postPrivateAppointmentController(req, res) {
 
 export async function getPublicAvailabilityController(req, res) {
     const { date, serviceId } = req.query
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? '')) {
-        return res.status(400).json({ error: 'Informe uma data válida.' })
+    if (!isStrictCalendarDate(date)) {
+        return validationError(res, 'Informe uma data válida.')
+    }
+    if (serviceId !== undefined && !isUuid(serviceId)) {
+        return validationError(res, 'Informe um serviço válido.')
     }
     try {
         const data = await getPublicBookingData(req.params.slug, date, serviceId)
@@ -98,14 +121,11 @@ export async function getPublicAvailabilityController(req, res) {
 }
 
 export async function postPublicAppointmentController(req, res) {
-    const { customerName, customerPhone, serviceId, startsAt } = req.body ?? {}
-    if (typeof customerName !== 'string' || !customerName.trim() ||
-        typeof customerPhone !== 'string' || !customerPhone.trim() ||
-        typeof serviceId !== 'string' || !Number.isFinite(Date.parse(startsAt))) {
-        return res.status(400).json({ error: 'Nome, telefone, serviço e horário são obrigatórios.' })
-    }
+    const validation = validateAppointmentPayload(req.body)
+    if (validation.error) return validationError(res, validation.error)
+
     try {
-        const appointment = await createPublicAppointment(req.params.slug, { customerName, customerPhone, serviceId, startsAt })
+        const appointment = await createPublicAppointment(req.params.slug, validation.payload)
         return res.status(201).json({ appointment })
     } catch (error) {
         return internalError(res, error)

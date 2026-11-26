@@ -8,3 +8,7 @@ export function useProfile() {
 export function useSetProfile() {
     return useContext(ProfileContext)?.setProfile
 }
+
+export function useRefreshProfile() {
+    return useContext(ProfileContext)?.refreshProfile
+}

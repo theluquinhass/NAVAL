@@ -138,49 +138,50 @@ export default function ProductsMovements() {
     const [products, setProducts] = useState([])
     const [movements, setMovements] = useState([])
     const [productFilter, setProductFilter] = useState(initialProductId)
-    const [loadedKey, setLoadedKey] = useState('')
+    const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
     const [form, setForm] = useState('')
     const [movementProductId, setMovementProductId] = useState('')
-    const [refreshKey, setRefreshKey] = useState(0)
 
-    const refresh = useCallback(() => setRefreshKey((current) => current + 1), [])
-    const requestKey = `${productFilter}|${refreshKey}`
-    const loading = loadedKey !== requestKey
+    const loadData = useCallback(async (isActive = () => true) => {
+        try {
+            const [nextProducts, nextMovements] = await Promise.all([
+                listProducts(),
+                listMovements(productFilter || null)
+            ])
+            if (!isActive()) return
+            setProducts(nextProducts)
+            setMovements(nextMovements)
+            setError('')
+        } catch (loadError) {
+            if (!isActive()) return
+            setProducts([])
+            setMovements([])
+            setError(getErrorMessage(loadError, 'Não foi possível carregar as movimentações.'))
+        } finally {
+            if (isActive()) setLoading(false)
+        }
+    }, [productFilter])
+
+    useEffect(() => {
+        let active = true
+        // State updates happen after the request resolves, not during the effect body.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadData(() => active)
+        return () => { active = false }
+    }, [loadData])
+
     const productNames = useMemo(
         () => Object.fromEntries(products.map((product) => [product.id, product.name])),
         [products]
     )
 
-    useEffect(() => {
-        let active = true
-        Promise.all([
-            listProducts(),
-            listMovements(productFilter || null)
-        ])
-            .then(([nextProducts, nextMovements]) => {
-                if (!active) return
-                setProducts(nextProducts)
-                setMovements(nextMovements)
-                setError('')
-            })
-            .catch((loadError) => {
-                if (!active) return
-                setError(getErrorMessage(loadError, 'Não foi possível carregar as movimentações.'))
-            })
-            .finally(() => {
-                if (active) setLoadedKey(requestKey)
-            })
-
-        return () => { active = false }
-    }, [productFilter, refreshKey, requestKey])
-
     function saved(text) {
         setMessage(text)
         setForm('')
         setMovementProductId('')
-        refresh()
+        loadData()
     }
 
     function openForm() {
@@ -197,7 +198,15 @@ export default function ProductsMovements() {
             </header>
 
             {message && <p className="dashboard-management__notice" role="status">{message}</p>}
-            {error && <p className="products-error" role="alert">{error}</p>}
+            {error && (
+                <div className="products-error" role="alert">
+                    <p>{error}</p>
+                    <button className="dashboard-management__secondary" type="button" onClick={() => {
+                        setLoading(true)
+                        loadData()
+                    }}>Tentar novamente</button>
+                </div>
+            )}
 
             <div className="products-actions">
                 <button className="dashboard-management__primary" type="button" onClick={openForm} disabled={products.length === 0}>Nova movimentação</button>
@@ -222,7 +231,11 @@ export default function ProductsMovements() {
                         <p>{movements.length} movimentação(ões) no filtro selecionado.</p>
                     </div>
                     <label className="dashboard-management__field products-filter" htmlFor="movement-filter">Filtrar por produto
-                        <select id="movement-filter" value={productFilter} onChange={(event) => setProductFilter(event.target.value)}>
+                        <select id="movement-filter" value={productFilter} onChange={(event) => {
+                                setError('')
+                                if (event.target.value !== productFilter) setLoading(true)
+                                setProductFilter(event.target.value)
+                            }}>
                             <option value="">Todos os produtos</option>
                             {products.map((product) => (
                                 <option key={product.id} value={product.id}>{product.name}</option>

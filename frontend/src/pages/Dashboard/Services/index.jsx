@@ -5,14 +5,11 @@ import {
     listServices,
     updateService
 } from '../../../services/servicesApi.js'
+import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
 import '../management.css'
 import './services.css'
 
 const emptyForm = { name: '', description: '', price: '', duration: '' }
-
-function getErrorMessage(error, fallback) {
-    return error.response?.data?.error || error.response?.data?.message || error.message || fallback
-}
 
 export default function Services() {
     const [services, setServices] = useState([])
@@ -207,7 +204,7 @@ export default function Services() {
                     <ul className="services-management__items">
                         {services.map((service) => (
                             <li className="services-management__item" key={service.id}>
-                                <div className="services-management__item-heading"><h3>{service.name}</h3><span>{Number(service.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                                <div className="services-management__item-heading"><h3>{service.name}</h3><span>{formatMoney(service.price)}</span></div>
                                 <p>{service.description || 'Sem descrição.'}</p>
                                 <div className="services-management__item-footer"><span>{service.duration} min</span><div className="dashboard-management__actions"><button className="dashboard-management__secondary" type="button" onClick={() => startEditing(service)}>Editar</button>
                                 <button className="dashboard-management__danger" type="button" onClick={() => handleDelete(service)}>Excluir</button></div></div>

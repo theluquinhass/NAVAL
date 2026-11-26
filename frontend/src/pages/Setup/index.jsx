@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api.js'
-import { getErrorMessage } from '../../utils/errorMessage.js'
+import { getErrorMessage } from '../../utils/dashboard.js'
+import { buildProfilePayload } from '../../utils/profilePayload.js'
 import { normalizeSlug } from '../../utils/slug.js'
 import '../../styles/auth.css'
 
@@ -25,13 +26,7 @@ export default function Setup() {
         setSaving(true)
 
         try {
-            await api.post('/profile', {
-                barberName: barberName.trim(),
-                name: name.trim(),
-                phone: phone.trim(),
-                slug: normalizeSlug(slug || name),
-                sellsProducts: sellsProducts === true
-            })
+            await api.post('/profile', buildProfilePayload({ barberName, name, phone, slug, sellsProducts }))
             navigate('/dashboard')
         } catch (requestError) {
             setError(getErrorMessage(requestError, 'Não foi possível salvar o perfil. Tente novamente.'))

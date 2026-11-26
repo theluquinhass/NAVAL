@@ -7,3 +7,11 @@ node_modules/
 
 # Keep example environment files
 !.env.example
+
+# Build output and reports
+dist/
+coverage/
+
+# Logs and OS files
+*.log
+.DS_Store

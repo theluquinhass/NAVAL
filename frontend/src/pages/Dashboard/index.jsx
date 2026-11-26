@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../hooks/useAuth.js'
 import { useProfile } from '../../hooks/useProfile.js'
 import { getDashboardOverview } from '../../services/dashboardApi.js'
+import {
+    fortalezaToday,
+    formatMoney,
+    getErrorMessage,
+    periodBounds,
+    TIME_ZONE
+} from '../../utils/dashboard.js'
 import './dashboard.css'
-
-const TIME_ZONE = 'America/Fortaleza'
 
 const icons = {
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
@@ -28,17 +33,6 @@ function partsInFortaleza(value) {
     return Object.fromEntries(parts.map(({ type, value: part }) => [type, part]))
 }
 
-function fortalezaToday() {
-    const { year, month, day } = partsInFortaleza(new Date())
-    return `${year}-${month}-${day}`
-}
-
-function nextDay(date) {
-    const value = new Date(`${date}T12:00:00Z`)
-    value.setUTCDate(value.getUTCDate() + 1)
-    return value.toISOString().slice(0, 10)
-}
-
 function formatDate(value) {
     return new Intl.DateTimeFormat('pt-BR', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: TIME_ZONE
@@ -51,10 +45,6 @@ function formatTime(value) {
     }).format(new Date(value))
 }
 
-function formatMoney(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-}
-
 export default function Dashboard() {
     const { loading: authLoading } = useAuth()
     const profile = useProfile()
@@ -65,8 +55,7 @@ export default function Dashboard() {
     const [error, setError] = useState('')
 
     const today = fortalezaToday()
-    const from = `${today}T00:00:00-03:00`
-    const to = `${nextDay(today)}T00:00:00-03:00`
+    const { from, to } = periodBounds(today, today)
     const requestKey = `${from}|${to}|${refreshKey}`
     const loading = loadedKey !== requestKey
 
@@ -82,7 +71,7 @@ export default function Dashboard() {
             })
             .catch((loadError) => {
                 if (!active) return
-                setError(loadError.response?.data?.error || 'Não foi possível carregar o resumo de hoje.')
+                setError(getErrorMessage(loadError, 'Não foi possível carregar o resumo de hoje.'))
                 setLoadedKey(requestKey)
             })
         return () => { active = false }

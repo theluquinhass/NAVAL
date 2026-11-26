@@ -1,6 +1,7 @@
 import { createPublicClient, createUserClient } from '../config/supabase.js'
 import { getBarbershopIdForAuthenticatedUser, getBarbershopIdForUser } from './barbershopService.js'
 import { isWithinWorkingHours, weekdayIndexForDate } from './workingHoursRules.js'
+import { DEFAULT_PAGINATION } from '../validation/shared.js'
 
 const HOURS_TABLE = 'barbershop_working_hours'
 const APPOINTMENTS_TABLE = 'appointments'
@@ -204,15 +205,16 @@ export async function createPrivateAppointment(supabase, userId, payload) {
     return data
 }
 
-export async function listAppointments(token, userId, from, to) {
+export async function listAppointments(token, userId, from, to, pagination = DEFAULT_PAGINATION, options = {}) {
     const profileId = await getBarbershopIdForUser(token, userId)
-    const { data, error } = await createUserClient(token)
+    const { data, error, count } = await createUserClient(token)
         .from(APPOINTMENTS_TABLE)
-        .select('id, customer_name, customer_phone, starts_at, ends_at, status, service:services(id, name, price, duration)')
+        .select('id, customer_name, customer_phone, starts_at, ends_at, status, service:services(id, name, price, duration)', { count: 'exact' })
         .eq('profile_id', profileId)
         .gte('starts_at', from)
         .lt('starts_at', to)
         .order('starts_at')
+        .range(pagination.offset, pagination.offset + pagination.limit - 1)
     if (error) throw new Error('APPOINTMENTS_READ_FAILED', { cause: error })
-    return data
+    return options.withCount ? { rows: data ?? [], count } : data
 }

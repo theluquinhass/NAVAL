@@ -2,19 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import DatePicker from '../../components/DatePicker.jsx'
 import { createAppointment, getPublicAvailability } from '../../services/schedulingApi.js'
-import { getErrorMessage } from '../../utils/errorMessage.js'
+import { fortalezaToday, formatMoney, getErrorMessage, TIME_ZONE } from '../../utils/dashboard.js'
 import './booking.css'
-
-const TIME_ZONE = 'America/Fortaleza'
-
-function localDate() {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(new Date())
-}
 
 function formatTime(value) {
     if (!value) return '--:--'
@@ -36,15 +25,12 @@ function formatDate(value) {
     })
 }
 
-function formatPrice(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0)
-}
-
 export default function Booking() {
     const { slug } = useParams()
-    const [date, setDate] = useState(localDate())
+    const [date, setDate] = useState(fortalezaToday())
     const [serviceId, setServiceId] = useState('')
     const [data, setData] = useState(null)
+    const [services, setServices] = useState([])
     const [slots, setSlots] = useState([])
     const [startsAt, setStartsAt] = useState('')
     const [customerName, setCustomerName] = useState('')
@@ -53,8 +39,9 @@ export default function Booking() {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
     const [confirmation, setConfirmation] = useState(null)
+    const [refreshKey, setRefreshKey] = useState(0)
 
-    const selectedService = data?.services?.find((service) => service.id === serviceId)
+    const selectedService = services.find((service) => service.id === serviceId)
 
     useEffect(() => {
         let active = true
@@ -62,15 +49,19 @@ export default function Booking() {
             .then((response) => {
                 if (!active) return
                 setData(response)
+                setServices(response.services ?? [])
                 setSlots(response.slots ?? [])
+                setError('')
             })
             .catch((requestError) => {
                 if (!active) return
+                setData(null)
+                setSlots([])
                 setError(getErrorMessage(requestError, 'Não foi possível carregar os horários.'))
             })
             .finally(() => { if (active) setLoading(false) })
         return () => { active = false }
-    }, [slug, date, serviceId])
+    }, [slug, date, serviceId, refreshKey])
 
     async function handleSubmit(event) {
         event.preventDefault()
@@ -80,16 +71,15 @@ export default function Booking() {
             await createAppointment(slug, { customerName, customerPhone, serviceId, startsAt })
             setConfirmation({
                 service: selectedService?.name || 'Serviço',
-                price: formatPrice(selectedService?.price),
+                price: formatMoney(selectedService?.price),
                 date: formatDate(date),
                 time: formatTime(startsAt)
             })
             setStartsAt('')
             setCustomerName('')
             setCustomerPhone('')
-            getPublicAvailability(slug, date, serviceId)
-                .then((refreshed) => setSlots(refreshed.slots ?? []))
-                .catch(() => {})
+            setLoading(true)
+            setRefreshKey((current) => current + 1)
         } catch (requestError) {
             setError(getErrorMessage(requestError, 'Não foi possível confirmar o agendamento.'))
         } finally {
@@ -97,21 +87,23 @@ export default function Booking() {
         }
     }
 
-    function handleServiceChange(value) {
-        setServiceId(value)
-        setStartsAt('')
+    function clearAvailability() {
+        setLoading(true)
         setError('')
+        setData(null)
+        setSlots([])
+        setStartsAt('')
         setConfirmation(null)
-        setLoading(Boolean(value))
-        if (!value) setSlots([])
+    }
+
+    function handleServiceChange(value) {
+        clearAvailability()
+        setServiceId(value)
     }
 
     function handleDateChange(value) {
+        clearAvailability()
         setDate(value)
-        setStartsAt('')
-        setError('')
-        setConfirmation(null)
-        setLoading(Boolean(serviceId))
     }
 
     function startOver() {
@@ -152,9 +144,9 @@ export default function Booking() {
                                 required
                             >
                                 <option value="">Selecione um serviço</option>
-                                {data?.services?.map((service) => (
+                                {services.map((service) => (
                                     <option key={service.id} value={service.id}>
-                                        {service.name} — {formatPrice(service.price)}
+                                        {service.name} — {formatMoney(service.price)}
                                     </option>
                                 ))}
                             </select>
@@ -165,7 +157,7 @@ export default function Booking() {
                             <DatePicker
                                 id="booking-date"
                                 ariaLabel="Data do agendamento"
-                                min={localDate()}
+                                min={fortalezaToday()}
                                 value={date}
                                 onChange={handleDateChange}
                                 required
@@ -216,7 +208,7 @@ export default function Booking() {
                         <div><span>Serviço</span><strong>{selectedService?.name || 'Não selecionado'}</strong></div>
                         <div><span>Data</span><strong>{formatDate(date)}</strong></div>
                         <div><span>Horário</span><strong>{formatTime(startsAt)}</strong></div>
-                        <div><span>Valor</span><strong>{selectedService ? formatPrice(selectedService.price) : '—'}</strong></div>
+                        <div><span>Valor</span><strong>{selectedService ? formatMoney(selectedService.price) : '—'}</strong></div>
                     </div>
 
                     {confirmation ? (

@@ -1,5 +1,6 @@
 import { createUserClient } from '../config/supabase.js'
 import { getBarbershopIdForAuthenticatedUser } from './barbershopService.js'
+import { DEFAULT_PAGINATION } from '../validation/shared.js'
 
 const CUSTOMERS_TABLE = 'customers'
 const APPOINTMENTS_TABLE = 'appointments'
@@ -10,22 +11,23 @@ async function getContext(token, userId) {
     return { supabase, profileId }
 }
 
-export async function listCustomers(token, userId, search = '') {
+export async function listCustomers(token, userId, search = '', pagination = DEFAULT_PAGINATION, options = {}) {
     const { supabase, profileId } = await getContext(token, userId)
     let query = supabase
         .from(CUSTOMERS_TABLE)
-        .select('id, name, phone, created_at, updated_at')
+        .select('id, name, phone, created_at, updated_at', { count: 'exact' })
         .eq('profile_id', profileId)
         .order('name', { ascending: true })
-        .limit(500)
 
     if (search) {
         query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
     }
 
-    const { data, error } = await query
+    const { data, error, count } = await query
+        .range(pagination.offset, pagination.offset + pagination.limit - 1)
+
     if (error) throw new Error('CUSTOMER_LIST_FAILED', { cause: error })
-    return data ?? []
+    return options.withCount ? { rows: data ?? [], count } : data ?? []
 }
 
 export async function createCustomer(token, userId, payload) {

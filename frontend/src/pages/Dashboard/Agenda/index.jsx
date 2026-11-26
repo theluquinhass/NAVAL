@@ -8,31 +8,29 @@ import {
     getPublicAvailability
 } from '../../../services/schedulingApi.js'
 import {
+    fortalezaToday,
+    formatMoney,
+    getErrorMessage,
+    toFortalezaIso
+} from '../../../utils/dashboard.js'
+import {
     formatSelectedDate,
     formatTime,
     getDayRange,
-    getLocalDateValue,
-    shiftDate,
-    toFortalezaIso
+    shiftDate
 } from './agendaDateTime.js'
 import './agenda.css'
 
 const emptyForm = { customerName: '', customerPhone: '', serviceId: '', date: '', startsAt: '' }
+const AGENDA_ERROR_MESSAGES = {
+    404: 'A barbearia ou o serviço selecionado não foi encontrado.',
+    409: 'Esse horário acabou de ser ocupado. Atualize as opções e selecione outro horário.'
+}
 
 function getStatus(status) {
     if (status === 'confirmed') return { label: 'Confirmado', className: 'agenda-status--confirmed' }
     if (status === 'cancelled') return { label: 'Cancelado', className: 'agenda-status--cancelled' }
     return { label: status, className: 'agenda-status--other' }
-}
-
-function getApiErrorMessage(error) {
-    const status = error.response?.status
-    if (status === 400) return error.response.data?.error || 'Confira os dados informados e tente novamente.'
-    if (status === 401) return 'Sua sessão expirou ou não está autenticada. Entre novamente para continuar.'
-    if (status === 404) return 'A barbearia ou o serviço selecionado não foi encontrado.'
-    if (status === 409) return 'Esse horário acabou de ser ocupado. Atualize as opções e selecione outro horário.'
-    if (status >= 500) return 'Não foi possível criar o agendamento agora. Tente novamente.'
-    return error.response?.data?.error || error.message || 'Não foi possível concluir a solicitação.'
 }
 
 function validateForm(form, today, slots) {
@@ -68,7 +66,7 @@ function CloseIcon() {
 
 export default function Agenda() {
     const profile = useProfile()
-    const [selectedDate, setSelectedDate] = useState(getLocalDateValue)
+    const [selectedDate, setSelectedDate] = useState(fortalezaToday)
     const [appointments, setAppointments] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
@@ -89,7 +87,7 @@ export default function Agenda() {
     const dialogRef = useRef(null)
     const nameInputRef = useRef(null)
     const previousFocusRef = useRef(null)
-    const today = getLocalDateValue()
+    const today = fortalezaToday()
     const maxBookingDate = shiftDate(today, 90)
 
     useEffect(() => {
@@ -98,7 +96,7 @@ export default function Agenda() {
         getAppointments(from, to)
             .then((items) => { if (active) setAppointments(items) })
             .catch((requestError) => {
-                if (active) setError(requestError.response?.data?.error || requestError.message || 'Não foi possível carregar a agenda.')
+                if (active) setError(getErrorMessage(requestError, 'Não foi possível carregar a agenda.', AGENDA_ERROR_MESSAGES))
             })
             .finally(() => { if (active) setLoading(false) })
         return () => { active = false }
@@ -132,7 +130,7 @@ export default function Agenda() {
             .catch((requestError) => {
                 if (active) {
                     setServicesState('error')
-                    setFormMessage(getApiErrorMessage(requestError))
+                    setFormMessage(getErrorMessage(requestError, 'Não foi possível carregar os serviços.', AGENDA_ERROR_MESSAGES))
                 }
             })
 
@@ -154,7 +152,7 @@ export default function Agenda() {
             })
             .catch((requestError) => {
                 if (active) {
-                    setAvailabilityError(getApiErrorMessage(requestError))
+                    setAvailabilityError(getErrorMessage(requestError, 'Não foi possível carregar os horários.', AGENDA_ERROR_MESSAGES))
                     setAvailabilityState('error')
                 }
             })
@@ -249,7 +247,7 @@ export default function Agenda() {
                 setAvailabilityRetry((current) => current + 1)
                 setFormErrors({ startsAt: 'Esse horário acabou de ser ocupado. Selecione outro horário.' })
             }
-            setFormMessage(getApiErrorMessage(requestError))
+            setFormMessage(getErrorMessage(requestError, 'Não foi possível concluir a solicitação.', AGENDA_ERROR_MESSAGES))
         } finally {
             setSubmitting(false)
         }
@@ -396,7 +394,7 @@ export default function Agenda() {
                                 required
                             >
                                 <option value="">Selecione um serviço</option>
-                                {services.map((service) => <option value={service.id} key={service.id}>{service.name} — {Number(service.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>)}
+                                {services.map((service) => <option value={service.id} key={service.id}>{service.name} — {formatMoney(service.price)}</option>)}
                             </select>
                             {formErrors.serviceId && <span className="dashboard-agenda__field-error" id="appointment-service-error">{formErrors.serviceId}</span>}
                         </label>

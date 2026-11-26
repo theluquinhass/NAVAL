@@ -1,8 +1,14 @@
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const ISO_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.\d{1,9})?(Z|([+-])(\d{2}):(\d{2}))$/
-const MONEY_PATTERN = /^\d+(?:\.\d{1,2})?$/
+import {
+    isUuid,
+    rejectExtraFields,
+    validateBusinessDate,
+    validateMoney,
+    validateOptionalText,
+    validatePeriod as validateSharedPeriod,
+    validateRequiredText
+} from './shared.js'
+
 const INTEGER_PATTERN = /^\d+$/
-const MAX_MONEY = 99999999.99
 const MAX_QUANTITY = 100000
 const MAX_ITEMS = 50
 
@@ -11,71 +17,6 @@ const MOVEMENT_FIELDS = new Set(['productId', 'movementType', 'quantity', 'direc
 const SALE_FIELDS = new Set(['items', 'paymentMethod', 'soldAt', 'note', 'idempotencyKey'])
 const SALE_ITEM_FIELDS = new Set(['productId', 'quantity'])
 const SALE_REFUND_FIELDS = new Set(['refundedAt', 'reason'])
-
-function isStrictIsoDateTime(value) {
-    if (typeof value !== 'string') return false
-    const match = ISO_DATETIME_PATTERN.exec(value)
-    if (!match) return false
-
-    const [, year, month, day, hour, minute, second, zone, , offsetHour, offsetMinute] = match
-    const calendarDate = new Date(0)
-    calendarDate.setUTCFullYear(Number(year), Number(month) - 1, Number(day))
-    calendarDate.setUTCHours(Number(hour), Number(minute), Number(second), 0)
-
-    if (
-        calendarDate.getUTCFullYear() !== Number(year) ||
-        calendarDate.getUTCMonth() !== Number(month) - 1 ||
-        calendarDate.getUTCDate() !== Number(day)
-    ) {
-        return false
-    }
-
-    if (zone !== 'Z') {
-        const hours = Number(offsetHour)
-        const minutes = Number(offsetMinute)
-        if (hours > 14 || minutes > 59 || (hours === 14 && minutes !== 0)) return false
-    }
-
-    return Number.isFinite(Date.parse(value))
-}
-
-function rejectExtraFields(body, allowedFields) {
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return 'O corpo da requisição deve ser um objeto.'
-    const extraFields = Object.keys(body).filter((field) => !allowedFields.has(field))
-    return extraFields.length > 0 ? `Campo(s) não permitido(s): ${extraFields.join(', ')}.` : null
-}
-
-function validateOptionalText(value, label, maxLength) {
-    if (value === undefined || value === null || value === '') return { text: null }
-    if (typeof value !== 'string') return { error: `O campo ${label} deve ser um texto.` }
-    const text = value.trim()
-    if (text.length > maxLength) return { error: `O campo ${label} deve ter no máximo ${maxLength} caracteres.` }
-    return { text: text || null }
-}
-
-function validateRequiredText(value, label, maxLength) {
-    const result = validateOptionalText(value, label, maxLength)
-    if (result.error) return result
-    if (!result.text) return { error: `Informe o campo ${label}.` }
-    return result
-}
-
-function validateMoney(value, label, { allowZero = false } = {}) {
-    if (typeof value !== 'string' && typeof value !== 'number') {
-        return { error: `O campo ${label} deve ser um valor monetário.` }
-    }
-    const text = String(value)
-    if (!MONEY_PATTERN.test(text) || !Number.isFinite(Number(text))) {
-        return { error: `O campo ${label} deve ter no máximo duas casas decimais.` }
-    }
-    const amount = Number(text)
-    const minimum = allowZero ? 0 : 0.01
-    if (amount < minimum || amount > MAX_MONEY) {
-        const minimumLabel = allowZero ? '0' : '0,01'
-        return { error: `O campo ${label} deve estar entre ${minimumLabel} e ${MAX_MONEY}.` }
-    }
-    return { amount: amount.toFixed(2) }
-}
 
 function validateOptionalMoney(value, label, { allowZero = true } = {}) {
     if (value === undefined || value === null || value === '') return { amount: null }
@@ -152,7 +93,7 @@ export function validateMovementPayload(body) {
     const extraError = rejectExtraFields(body, MOVEMENT_FIELDS)
     if (extraError) return { error: extraError }
 
-    if (typeof body.productId !== 'string' || !UUID_PATTERN.test(body.productId)) {
+    if (!isUuid(body.productId)) {
         return { error: 'O campo productId deve ser um UUID válido.' }
     }
     if (!['entry', 'adjustment'].includes(body.movementType)) {
@@ -207,7 +148,7 @@ export function validateSalePayload(body) {
         }
         const itemFields = Object.keys(item).filter((field) => !SALE_ITEM_FIELDS.has(field))
         if (itemFields.length > 0) return { error: `Campo(s) não permitido(s) no item: ${itemFields.join(', ')}.` }
-        if (typeof item.productId !== 'string' || !UUID_PATTERN.test(item.productId)) {
+        if (!isUuid(item.productId)) {
             return { error: 'Cada item deve ter um productId UUID válido.' }
         }
         if (seenProductIds.has(item.productId)) {
@@ -221,15 +162,14 @@ export function validateSalePayload(body) {
 
     const paymentMethod = validateRequiredText(body.paymentMethod, 'paymentMethod', 50)
     if (paymentMethod.error) return paymentMethod
-    if (!isStrictIsoDateTime(body.soldAt)) {
-        return { error: 'O campo soldAt deve ser uma data ISO 8601 com timezone explícito.' }
-    }
+    const soldAt = validateBusinessDate(body.soldAt, 'soldAt')
+    if (soldAt.error) return soldAt
     const note = validateOptionalText(body.note, 'note', 500)
     if (note.error) return note
 
     let idempotencyKey = null
     if (body.idempotencyKey !== undefined && body.idempotencyKey !== null && body.idempotencyKey !== '') {
-        if (typeof body.idempotencyKey !== 'string' || !UUID_PATTERN.test(body.idempotencyKey)) {
+        if (!isUuid(body.idempotencyKey)) {
             return { error: 'O campo idempotencyKey deve ser um UUID válido.' }
         }
         idempotencyKey = body.idempotencyKey
@@ -239,7 +179,7 @@ export function validateSalePayload(body) {
         payload: {
             items,
             paymentMethod: paymentMethod.text,
-            soldAt: body.soldAt,
+            soldAt: soldAt.date,
             note: note.text,
             idempotencyKey
         }
@@ -249,42 +189,33 @@ export function validateSalePayload(body) {
 export function validateSaleRefundPayload(body) {
     const extraError = rejectExtraFields(body, SALE_REFUND_FIELDS)
     if (extraError) return { error: extraError }
-    if (!isStrictIsoDateTime(body.refundedAt)) {
-        return { error: 'O campo refundedAt deve ser uma data ISO 8601 com timezone explícito.' }
-    }
+    const refundedAt = validateBusinessDate(body.refundedAt, 'refundedAt')
+    if (refundedAt.error) return refundedAt
     const reason = validateRequiredText(body.reason, 'reason', 500)
     if (reason.error) return reason
 
     return {
         payload: {
-            refundedAt: body.refundedAt,
+            refundedAt: refundedAt.date,
             reason: reason.text
         }
     }
 }
 
 export function validateProductId(value) {
-    return typeof value === 'string' && UUID_PATTERN.test(value)
+    return isUuid(value)
 }
 
 export function validateMovementProductFilter(query) {
     if (!query || typeof query !== 'object') return { error: 'Informe os parâmetros da consulta.' }
     const { productId } = query
     if (productId === undefined || productId === null || productId === '') return { productId: null }
-    if (typeof productId !== 'string' || !UUID_PATTERN.test(productId)) {
+    if (!isUuid(productId)) {
         return { error: 'O campo productId deve ser um UUID válido.' }
     }
     return { productId }
 }
 
 export function validateSalePeriod(query) {
-    if (!query || typeof query !== 'object') return { error: 'Informe o período.' }
-    const { from, to } = query
-    if (!isStrictIsoDateTime(from) || !isStrictIsoDateTime(to)) {
-        return { error: 'Informe from e to como ISO 8601 com timezone explícito.' }
-    }
-    if (Date.parse(from) >= Date.parse(to)) {
-        return { error: 'O início do período deve ser anterior ao fim.' }
-    }
-    return { period: { from, to } }
+    return validateSharedPeriod(query)
 }

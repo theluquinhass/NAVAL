@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../contexts/AuthContext.jsx'
-import { useProfile, useSetProfile } from '../../../hooks/useProfile.js'
+import { useAuth } from '../../../hooks/useAuth.js'
+import { useProfile, useRefreshProfile, useSetProfile } from '../../../hooks/useProfile.js'
 import { useTheme } from '../../../contexts/ThemeContext.jsx'
 import { supabase } from '../../../lib/supabase.js'
 import { updateProfile } from '../../../services/profileApi.js'
+import { getErrorMessage } from '../../../utils/dashboard.js'
 import { normalizeSlug } from '../../../utils/slug.js'
 import '../management.css'
 import './settings.css'
@@ -14,10 +15,6 @@ const TABS = [
     { id: 'account', label: 'Conta e segurança', path: '/dashboard/settings' },
     { id: 'preferences', label: 'Preferências', path: '/dashboard/settings?tab=preferences' }
 ]
-
-function getErrorMessage(error, fallback) {
-    return error?.response?.data?.error || error?.response?.data?.message || error?.message || fallback
-}
 
 function profileToForm(profile) {
     return {
@@ -41,6 +38,7 @@ function Feedback({ value }) {
 function BusinessPanel({ activeTab }) {
     const profile = useProfile()
     const setProfile = useSetProfile()
+    const refreshProfile = useRefreshProfile()
     const [form, setForm] = useState(() => profileToForm(profile))
     const [saving, setSaving] = useState(false)
     const [feedback, setFeedback] = useState(null)
@@ -81,6 +79,9 @@ function BusinessPanel({ activeTab }) {
             })
             setForm(profileToForm(updated))
             setProfile?.(updated)
+            if (refreshProfile) {
+                await refreshProfile().catch(() => {})
+            }
             setFeedback({
                 type: 'success',
                 text: form.sellsProducts

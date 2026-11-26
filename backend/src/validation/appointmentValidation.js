@@ -1,37 +1,11 @@
+import { isStrictIsoDateTime, isUuid } from './shared.js'
+
 const ALLOWED_FIELDS = new Set(['customerName', 'customerPhone', 'serviceId', 'startsAt'])
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const ISO_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\.\d{1,9})?(Z|([+-])(\d{2}):(\d{2}))$/
 const PHONE_CHARACTERS_PATTERN = /^\+?[0-9][0-9().\s-]*[0-9]$/
 const MIN_PHONE_DIGITS = 7
 const MAX_PHONE_DIGITS = 15
 const MAX_PHONE_LENGTH = 25
 const MAX_CUSTOMER_NAME_LENGTH = 100
-
-function isStrictIsoDateTime(value) {
-    const match = ISO_DATETIME_PATTERN.exec(value)
-    if (!match) return false
-
-    const [, year, month, day, hour, minute, second, zone, , offsetHour, offsetMinute] = match
-    const calendarDate = new Date(0)
-    calendarDate.setUTCFullYear(Number(year), Number(month) - 1, Number(day))
-    calendarDate.setUTCHours(Number(hour), Number(minute), Number(second), 0)
-
-    if (
-        calendarDate.getUTCFullYear() !== Number(year) ||
-        calendarDate.getUTCMonth() !== Number(month) - 1 ||
-        calendarDate.getUTCDate() !== Number(day)
-    ) {
-        return false
-    }
-
-    if (zone !== 'Z') {
-        const hours = Number(offsetHour)
-        const minutes = Number(offsetMinute)
-        if (hours > 14 || minutes > 59 || (hours === 14 && minutes !== 0)) return false
-    }
-
-    return Number.isFinite(Date.parse(value))
-}
 
 export function validateAppointmentPayload(body) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -77,7 +51,7 @@ export function validateAppointmentPayload(body) {
         return { error: `O campo customerPhone deve conter entre ${MIN_PHONE_DIGITS} e ${MAX_PHONE_DIGITS} dígitos e usar somente caracteres de telefone válidos.` }
     }
 
-    if (typeof serviceId !== 'string' || !UUID_PATTERN.test(serviceId)) {
+    if (!isUuid(serviceId)) {
         return { error: 'O campo serviceId deve ser um UUID válido.' }
     }
 

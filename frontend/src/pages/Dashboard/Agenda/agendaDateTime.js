@@ -1,18 +1,11 @@
-export const TIME_ZONE = 'America/Fortaleza'
+import { fortalezaToday, TIME_ZONE } from '../../../utils/dashboard.js'
 
-export function getLocalDateValue(date = new Date()) {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).format(date)
-}
+export { TIME_ZONE, toFortalezaIso } from '../../../utils/dashboard.js'
 
 export function shiftDate(dateValue, amount) {
     const date = new Date(`${dateValue}T12:00:00-03:00`)
     date.setUTCDate(date.getUTCDate() + amount)
-    return getLocalDateValue(date)
+    return fortalezaToday(date)
 }
 
 export function getDayRange(dateValue) {
@@ -37,33 +30,4 @@ export function formatTime(value) {
         hour: '2-digit',
         minute: '2-digit'
     }).format(new Date(value))
-}
-
-export function toFortalezaIso(value) {
-    const instant = new Date(value)
-    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hourCycle: 'h23'
-    }).formatToParts(instant).map(({ type, value: partValue }) => [type, partValue]))
-    const localAsUtc = Date.UTC(
-        Number(parts.year),
-        Number(parts.month) - 1,
-        Number(parts.day),
-        Number(parts.hour),
-        Number(parts.minute),
-        Number(parts.second),
-        instant.getUTCMilliseconds()
-    )
-    const offsetMinutes = Math.round((localAsUtc - instant.getTime()) / 60_000)
-    const sign = offsetMinutes >= 0 ? '+' : '-'
-    const absoluteOffset = Math.abs(offsetMinutes)
-    const offset = `${sign}${String(Math.floor(absoluteOffset / 60)).padStart(2, '0')}:${String(absoluteOffset % 60).padStart(2, '0')}`
-
-    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`
 }

@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Outlet } from 'react-router-dom'
 import Header from '../components/layout/Header.jsx'
 import Sidebar from '../components/layout/Sidebar.jsx'
 import './DashboardLayout.css'
@@ -114,7 +115,6 @@ export default function DashboardLayout({ children }) {
                     type="button"
                     className="dashboard-layout__backdrop"
                     aria-label="Fechar navegação"
-                    aria-hidden="true"
                     tabIndex={-1}
                     onClick={() => setIsSidebarOpen(false)}
                 />
@@ -127,7 +127,11 @@ export default function DashboardLayout({ children }) {
                     onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
                 />
                 <div className="dashboard-layout__content" inert={mobileNavigationOpen}>
-                    {children}
+                    {children ?? (
+                        <Suspense fallback={<p className="dashboard-loading" role="status">Carregando página...</p>}>
+                            <Outlet />
+                        </Suspense>
+                    )}
                 </div>
             </div>
         </div>

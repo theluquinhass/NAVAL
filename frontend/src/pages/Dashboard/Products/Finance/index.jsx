@@ -12,6 +12,7 @@ import {
     formatDateTime,
     formatMoney,
     getErrorMessage,
+    moneyToCents,
     newIdempotencyKey,
     periodBounds,
     toFortalezaIso
@@ -24,10 +25,6 @@ const MONEY_PATTERN = /^\d+(?:\.\d{1,2})?$/
 
 function validAmount(value) {
     return MONEY_PATTERN.test(String(value)) && Number(value) > 0
-}
-
-function toCents(value) {
-    return Math.round(Number(value ?? 0) * 100)
 }
 
 function Metric({ label, value, detail, tone }) {
@@ -193,7 +190,7 @@ function SaleForm({ products, productsError, onCancel, onSaved }) {
 
 function SaleRefundForm({ payments, refunds, initialPaymentId, onCancel, onSaved }) {
     const refundedCentsByPayment = useMemo(() => refunds.reduce((totals, refund) => {
-        totals[refund.payment_id] = (totals[refund.payment_id] ?? 0) + toCents(refund.amount)
+        totals[refund.payment_id] = (totals[refund.payment_id] ?? 0) + moneyToCents(refund.amount)
         return totals
     }, {}), [refunds])
     const [form, setForm] = useState({
@@ -207,7 +204,7 @@ function SaleRefundForm({ payments, refunds, initialPaymentId, onCancel, onSaved
 
     const selectedPayment = payments.find((payment) => payment.id === form.paymentId)
     const remainingCents = selectedPayment
-        ? Math.max(0, toCents(selectedPayment.amount) - (refundedCentsByPayment[selectedPayment.id] ?? 0))
+        ? Math.max(0, moneyToCents(selectedPayment.amount) - (refundedCentsByPayment[selectedPayment.id] ?? 0))
         : 0
 
     function change(event) {
@@ -226,7 +223,7 @@ function SaleRefundForm({ payments, refunds, initialPaymentId, onCancel, onSaved
             setError('Informe o valor estornado, com até duas casas decimais.')
             return
         }
-        if (remainingCents > 0 && toCents(form.amount) > remainingCents) {
+        if (remainingCents > 0 && moneyToCents(form.amount) > remainingCents) {
             setError(`O valor restante para estorno é ${formatMoney(remainingCents / 100)}.`)
             return
         }
@@ -258,7 +255,7 @@ function SaleRefundForm({ payments, refunds, initialPaymentId, onCancel, onSaved
                 <select id="sale-refund-payment" name="paymentId" required value={form.paymentId} onChange={change}>
                     <option value="">Selecione uma venda</option>
                     {payments.map((payment) => {
-                        const remaining = Math.max(0, toCents(payment.amount) - (refundedCentsByPayment[payment.id] ?? 0)) / 100
+                        const remaining = Math.max(0, moneyToCents(payment.amount) - (refundedCentsByPayment[payment.id] ?? 0)) / 100
                         return (
                             <option key={payment.id} value={payment.id}>
                                 {formatDateTime(payment.paid_at)} · {formatMoney(payment.amount)} · restante {formatMoney(remaining)}

@@ -1,5 +1,7 @@
 import { createUserClient } from '../config/supabase.js'
 import { getBarbershopIdForAuthenticatedUser } from './barbershopService.js'
+import { fromCents } from './money.js'
+import { DEFAULT_PAGINATION } from '../validation/shared.js'
 
 const MOVEMENTS_TABLE = 'inventory_movements'
 const SALES_TABLE = 'sales'
@@ -32,16 +34,8 @@ async function getContext(token, userId) {
     return { supabase, profileId }
 }
 
-function toCents(value) {
-    return Math.round(Number(value) * 100)
-}
-
-function fromCents(cents) {
-    return Number((cents / 100).toFixed(2))
-}
-
-function sumCents(rows, column) {
-    return rows.reduce((total, row) => total + toCents(row[column]), 0)
+function pageOrRows(data, count, withCount) {
+    return withCount ? { rows: data ?? [], count } : data ?? []
 }
 
 function throwRpcError(error, { failed, notFound = 'PRODUCT_NOT_FOUND', duplicate = 'PRODUCT_DUPLICATE', invalid = 'INVALID_PRODUCT_DATA' }) {
@@ -126,21 +120,21 @@ export async function deleteProduct(token, userId, productId) {
     return data
 }
 
-export async function listMovements(token, userId, productId = null) {
+export async function listMovements(token, userId, productId = null, pagination = DEFAULT_PAGINATION, options = {}) {
     const { supabase, profileId } = await getContext(token, userId)
     let query = supabase
         .from(MOVEMENTS_TABLE)
-        .select(MOVEMENT_COLUMNS)
+        .select(MOVEMENT_COLUMNS, { count: 'exact' })
         .eq('profile_id', profileId)
 
     if (productId) query = query.eq('product_id', productId)
 
-    const { data, error } = await query
+    const { data, error, count } = await query
         .order('created_at', { ascending: false })
-        .limit(500)
+        .range(pagination.offset, pagination.offset + pagination.limit - 1)
 
     if (error) throw new Error('MOVEMENTS_READ_FAILED', { cause: error })
-    return data ?? []
+    return pageOrRows(data, count, options.withCount)
 }
 
 export async function recordMovement(token, userId, payload) {
@@ -159,19 +153,19 @@ export async function recordMovement(token, userId, payload) {
     return data
 }
 
-export async function listSales(token, userId, from, to) {
+export async function listSales(token, userId, from, to, pagination = DEFAULT_PAGINATION, options = {}) {
     const { supabase, profileId } = await getContext(token, userId)
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
         .from(SALES_TABLE)
-        .select(SALE_COLUMNS)
+        .select(SALE_COLUMNS, { count: 'exact' })
         .eq('profile_id', profileId)
         .gte('sold_at', from)
         .lt('sold_at', to)
         .order('sold_at', { ascending: false })
-        .limit(500)
+        .range(pagination.offset, pagination.offset + pagination.limit - 1)
 
     if (error) throw new Error('SALES_READ_FAILED', { cause: error })
-    return data ?? []
+    return pageOrRows(data, count, options.withCount)
 }
 
 export async function createSale(token, userId, payload) {
@@ -205,9 +199,14 @@ export async function refundSale(token, userId, saleId, payload) {
     return data
 }
 
-export async function getProductFinanceOverview(token, userId, from, to) {
+export async function getProductFinanceOverview(token, userId, from, to, pagination = DEFAULT_PAGINATION) {
     const { supabase, profileId } = await getContext(token, userId)
-    const [salesResult, paymentsResult, purchasesResult] = await Promise.all([
+    const [totalsResult, salesResult, paymentsResult, purchasesResult] = await Promise.all([
+        supabase.rpc('products_finance_period_totals', {
+            p_profile_id: profileId,
+            p_from: from,
+            p_to: to
+        }),
         supabase
             .from(SALES_TABLE)
             .select(SALE_COLUMNS)
@@ -215,7 +214,7 @@ export async function getProductFinanceOverview(token, userId, from, to) {
             .gte('sold_at', from)
             .lt('sold_at', to)
             .order('sold_at', { ascending: false })
-            .limit(500),
+            .range(pagination.offset, pagination.offset + pagination.limit - 1),
         supabase
             .from(PAYMENTS_TABLE)
             .select(FINANCE_PAYMENT_COLUMNS)
@@ -224,7 +223,7 @@ export async function getProductFinanceOverview(token, userId, from, to) {
             .gte('paid_at', from)
             .lt('paid_at', to)
             .order('paid_at', { ascending: false })
-            .limit(500),
+            .range(pagination.offset, pagination.offset + pagination.limit - 1),
         supabase
             .from(EXPENSES_TABLE)
             .select(FINANCE_EXPENSE_COLUMNS)
@@ -233,13 +232,14 @@ export async function getProductFinanceOverview(token, userId, from, to) {
             .gte('spent_at', from)
             .lt('spent_at', to)
             .order('spent_at', { ascending: false })
-            .limit(500)
+            .range(pagination.offset, pagination.offset + pagination.limit - 1)
     ])
 
-    for (const result of [salesResult, paymentsResult, purchasesResult]) {
+    for (const result of [totalsResult, salesResult, paymentsResult, purchasesResult]) {
         if (result.error) throw new Error('PRODUCT_FINANCE_READ_FAILED', { cause: result.error })
     }
 
+    const totals = totalsResult.data ?? {}
     const sales = salesResult.data ?? []
     const payments = paymentsResult.data ?? []
     const purchases = purchasesResult.data ?? []
@@ -251,8 +251,10 @@ export async function getProductFinanceOverview(token, userId, from, to) {
             .select(FINANCE_REFUND_COLUMNS)
             .eq('profile_id', profileId)
             .in('payment_id', payments.map((payment) => payment.id))
+            .gte('refunded_at', from)
+            .lt('refunded_at', to)
             .order('refunded_at', { ascending: false })
-            .limit(500)
+            .range(pagination.offset, pagination.offset + pagination.limit - 1)
 
         if (refundsResult.error) {
             throw new Error('PRODUCT_FINANCE_READ_FAILED', { cause: refundsResult.error })
@@ -260,9 +262,9 @@ export async function getProductFinanceOverview(token, userId, from, to) {
         refunds = refundsResult.data ?? []
     }
 
-    const grossCents = sumCents(payments, 'amount')
-    const refundsCents = sumCents(refunds, 'amount')
-    const purchasesCents = sumCents(purchases, 'amount')
+    const grossCents = Number(totals.gross_revenue_cents ?? 0)
+    const refundsCents = Number(totals.refunds_cents ?? 0)
+    const purchasesCents = Number(totals.purchase_expenses_cents ?? 0)
     const netCents = grossCents - refundsCents
 
     return {
@@ -274,10 +276,10 @@ export async function getProductFinanceOverview(token, userId, from, to) {
             netRevenue: fromCents(netCents),
             purchaseExpenses: fromCents(purchasesCents),
             balance: fromCents(netCents - purchasesCents),
-            salesCount: sales.length,
-            paymentsCount: payments.length,
-            refundsCount: refunds.length,
-            purchasesCount: purchases.length
+            salesCount: Number(totals.sales_count ?? 0),
+            paymentsCount: Number(totals.payments_count ?? 0),
+            refundsCount: Number(totals.refunds_count ?? 0),
+            purchasesCount: Number(totals.purchases_count ?? 0)
         },
         sales,
         payments,

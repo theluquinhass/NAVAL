@@ -41,6 +41,7 @@ function Icon({ name }) {
 export default function Sidebar({ isMobile, isOpen, onClose, sidebarRef, firstLinkRef }) {
     const profile = useProfile()
     const visibleGroups = groups.filter((group) => group.title !== 'Produtos' || profile?.sellsProducts)
+    const firstNavItem = visibleGroups.flatMap((group) => group.items).find((item) => item.to)
 
     return (
         <aside
@@ -65,7 +66,7 @@ export default function Sidebar({ isMobile, isOpen, onClose, sidebarRef, firstLi
                             {group.items.map((item) => item.to ? (
                                 <NavLink
                                     key={item.label}
-                                    ref={firstLinkRef}
+                                    ref={item === firstNavItem ? firstLinkRef : undefined}
                                     to={item.to}
                                     end
                                     className={({ isActive }) => `dashboard-sidebar__link${isActive ? ' dashboard-sidebar__link--active' : ''}`}

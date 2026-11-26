@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import PasswordField from '../../components/PasswordField.jsx'
 import { supabase } from '../../lib/supabase.js'
-import { getErrorMessage } from '../../utils/errorMessage.js'
+import { getErrorMessage } from '../../utils/dashboard.js'
 import '../../styles/auth.css'
 
 export default function Register() {

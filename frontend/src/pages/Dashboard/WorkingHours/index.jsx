@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getWorkingHours, saveWorkingHours } from '../../../services/schedulingApi.js'
+import { formatTimeInput, getErrorMessage, TIME_ZONE } from '../../../utils/dashboard.js'
 import '../management.css'
 import './workingHours.css'
 
@@ -7,11 +8,6 @@ const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Q
 const WEEKDAY_INDICES = [1, 2, 3, 4, 5]
 const ALL_DAY_INDICES = weekdays.map((_, index) => index)
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
-
-function formatTimeInput(value) {
-    const digits = String(value).replace(/\D/g, '').slice(0, 4)
-    return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
-}
 
 function completeTime(value) {
     const digits = String(value).replace(/\D/g, '').slice(0, 4)
@@ -55,10 +51,6 @@ function mapSavedHours(saved = []) {
     return week
 }
 
-function getErrorMessage(error, fallback) {
-    return error.response?.data?.error || error.message || fallback
-}
-
 function getScheduleErrors(days) {
     const errors = {}
 
@@ -99,7 +91,7 @@ function formatAppointmentDate(value) {
     return new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
         timeStyle: 'short',
-        timeZone: 'America/Fortaleza'
+        timeZone: TIME_ZONE
     }).format(new Date(value))
 }
 
@@ -313,7 +305,11 @@ export default function WorkingHours() {
 
                     <div className="working-hours__days">
                         {days.map((day) => (
-                            <fieldset className={`working-hours__day${day.enabled ? ' working-hours__day--open' : ''}`} key={day.day_of_week}>
+                            <fieldset
+                                                className={`working-hours__day${day.enabled ? ' working-hours__day--open' : ''}`}
+                                                key={day.day_of_week}
+                                                aria-describedby={validationErrors[day.day_of_week] ? `working-day-${day.day_of_week}-error` : undefined}
+                                            >
                                 <legend>{weekdays[day.day_of_week]}</legend>
                                 <div className="working-hours__day-status">
                                     <label className="working-hours__toggle" htmlFor={`working-day-${day.day_of_week}`}>
@@ -348,6 +344,8 @@ export default function WorkingHours() {
                                                         maxLength={5}
                                                         placeholder="09:00"
                                                         aria-label={`${weekdays[day.day_of_week]}, período ${periodIndex + 1}, horário de início`}
+                                                        aria-invalid={Boolean(validationErrors[day.day_of_week])}
+                                                        aria-describedby={validationErrors[day.day_of_week] ? `working-day-${day.day_of_week}-error` : undefined}
                                                         value={period.opens_at}
                                                         onChange={(event) => updateTime(day.day_of_week, periodIndex, 'opens_at', event.target.value)}
                                                         onBlur={() => normalizeTime(day.day_of_week, periodIndex, 'opens_at')}
@@ -363,6 +361,8 @@ export default function WorkingHours() {
                                                         maxLength={5}
                                                         placeholder="12:00"
                                                         aria-label={`${weekdays[day.day_of_week]}, período ${periodIndex + 1}, horário de término`}
+                                                        aria-invalid={Boolean(validationErrors[day.day_of_week])}
+                                                        aria-describedby={validationErrors[day.day_of_week] ? `working-day-${day.day_of_week}-error` : undefined}
                                                         value={period.closes_at}
                                                         onChange={(event) => updateTime(day.day_of_week, periodIndex, 'closes_at', event.target.value)}
                                                         onBlur={() => normalizeTime(day.day_of_week, periodIndex, 'closes_at')}
@@ -379,7 +379,7 @@ export default function WorkingHours() {
                                             </div>
                                         ))}
                                         {validationErrors[day.day_of_week] && (
-                                            <p className="working-hours__day-error" role="alert">{validationErrors[day.day_of_week]}</p>
+                                            <p className="working-hours__day-error" id={`working-day-${day.day_of_week}-error`} role="alert">{validationErrors[day.day_of_week]}</p>
                                         )}
                                         <button className="working-hours__add" type="button" onClick={() => addPeriod(day.day_of_week)}>
                                             <span aria-hidden="true">+</span> Adicionar período

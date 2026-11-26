@@ -1,5 +1,3 @@
-begin;
-
 -- Fail closed if the live database has an INSERT/ALL policy outside the
 -- reviewed policy set. PostgreSQL combines permissive policies with OR, so
 -- an unreviewed policy could otherwise keep a broader insert path open.
@@ -90,5 +88,3 @@ create policy "Owners can create confirmed appointments"
                and (appointments.ends_at at time zone 'America/Fortaleza')::time <= h.closes_at
         )
     );
-
-commit;
