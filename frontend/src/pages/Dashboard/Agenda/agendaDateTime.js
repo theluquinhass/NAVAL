@@ -1,6 +1,12 @@
 import { fortalezaToday, TIME_ZONE } from '../../../utils/dashboard.js'
 
-export { TIME_ZONE, toFortalezaIso } from '../../../utils/dashboard.js'
+// Keep the old export available for cached bundles that still import it.
+// The canonical implementation lives in utils/dashboard.js.
+export {
+    TIME_ZONE,
+    fortalezaToday as getLocalDateValue,
+    toFortalezaIso
+} from '../../../utils/dashboard.js'
 
 export function shiftDate(dateValue, amount) {
     const date = new Date(`${dateValue}T12:00:00-03:00`)
