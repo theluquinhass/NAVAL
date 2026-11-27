@@ -1,99 +1,18 @@
 import { useEffect, useState } from 'react'
 import { getWorkingHours, saveWorkingHours } from '../../../services/schedulingApi.js'
-import { formatTimeInput, getErrorMessage, TIME_ZONE } from '../../../utils/dashboard.js'
+import { formatTimeInput, getErrorMessage } from '../../../utils/dashboard.js'
+import ConflictsReview from './ConflictsReview.jsx'
+import WorkingDayFieldset from './WorkingDayFieldset.jsx'
+import {
+    completeTime,
+    dayTotalMinutes,
+    formatDuration,
+    createEmptyWeek,
+    mapSavedHours,
+    getScheduleErrors
+} from './scheduleUtils.js'
 import '../management.css'
 import './workingHours.css'
-
-const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
-const WEEKDAY_INDICES = [1, 2, 3, 4, 5]
-const ALL_DAY_INDICES = weekdays.map((_, index) => index)
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
-
-function completeTime(value) {
-    const digits = String(value).replace(/\D/g, '').slice(0, 4)
-    if (digits.length === 0) return ''
-    return `${digits.slice(0, 2).padStart(2, '0')}:${digits.slice(2).padEnd(2, '0')}`
-}
-
-function dayTotalMinutes(day) {
-    if (!day.enabled) return 0
-    return day.periods.reduce((total, period) => {
-        if (!TIME_PATTERN.test(period.opens_at) || !TIME_PATTERN.test(period.closes_at)) return total
-        const [openHour, openMinute] = period.opens_at.split(':').map(Number)
-        const [closeHour, closeMinute] = period.closes_at.split(':').map(Number)
-        const minutes = (closeHour * 60 + closeMinute) - (openHour * 60 + openMinute)
-        return minutes > 0 ? total + minutes : total
-    }, 0)
-}
-
-function formatDuration(minutes) {
-    const hours = Math.floor(minutes / 60)
-    const remainder = minutes % 60
-    if (hours === 0) return `${remainder}min`
-    return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}min`
-}
-
-function createEmptyWeek() {
-    return weekdays.map((_, day_of_week) => ({ day_of_week, enabled: false, periods: [] }))
-}
-
-function mapSavedHours(saved = []) {
-    const week = createEmptyWeek()
-    for (const row of [...saved].sort((a, b) => a.day_of_week - b.day_of_week || a.period_index - b.period_index)) {
-        const day = week[row.day_of_week]
-        if (!day) continue
-        day.enabled = true
-        day.periods.push({
-            opens_at: row.opens_at?.slice(0, 5) ?? '',
-            closes_at: row.closes_at?.slice(0, 5) ?? ''
-        })
-    }
-    return week
-}
-
-function getScheduleErrors(days) {
-    const errors = {}
-
-    for (const day of days.filter((item) => item.enabled)) {
-        if (day.periods.length === 0) {
-            errors[day.day_of_week] = 'Adicione pelo menos um período ou feche este dia.'
-            continue
-        }
-
-        for (let index = 0; index < day.periods.length; index += 1) {
-            const period = day.periods[index]
-            if (!TIME_PATTERN.test(period.opens_at) || !TIME_PATTERN.test(period.closes_at)) {
-                errors[day.day_of_week] = `Preencha início e término do período ${index + 1} no formato HH:mm.`
-                break
-            }
-            if (period.opens_at >= period.closes_at) {
-                errors[day.day_of_week] = `No período ${index + 1}, o início deve ser anterior ao término.`
-                break
-            }
-            if (index > 0) {
-                const previous = day.periods[index - 1]
-                if (period.opens_at < previous.closes_at) {
-                    errors[day.day_of_week] = `O período ${index + 1} se sobrepõe ao período anterior. Ajuste os horários ou remova o intervalo.`
-                    break
-                }
-                if (period.opens_at < previous.opens_at) {
-                    errors[day.day_of_week] = 'Ordene os períodos do dia pelo horário de início.'
-                    break
-                }
-            }
-        }
-    }
-
-    return errors
-}
-
-function formatAppointmentDate(value) {
-    return new Intl.DateTimeFormat('pt-BR', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-        timeZone: TIME_ZONE
-    }).format(new Date(value))
-}
 
 export default function WorkingHours() {
     const [days, setDays] = useState(createEmptyWeek)
@@ -266,6 +185,7 @@ export default function WorkingHours() {
         setReloadToken((current) => current + 1)
     }
 
+    const dayActions = { updateDay, updateTime, normalizeTime, addPeriod, removePeriod, copySchedule, closeDay }
     const openDays = days.filter((day) => day.enabled).length
     const totalMinutes = days.reduce((total, day) => total + dayTotalMinutes(day), 0)
 
@@ -305,116 +225,12 @@ export default function WorkingHours() {
 
                     <div className="working-hours__days">
                         {days.map((day) => (
-                            <fieldset
-                                                className={`working-hours__day${day.enabled ? ' working-hours__day--open' : ''}`}
-                                                key={day.day_of_week}
-                                                aria-describedby={validationErrors[day.day_of_week] ? `working-day-${day.day_of_week}-error` : undefined}
-                                            >
-                                <legend>{weekdays[day.day_of_week]}</legend>
-                                <div className="working-hours__day-status">
-                                    <label className="working-hours__toggle" htmlFor={`working-day-${day.day_of_week}`}>
-                                        <input
-                                            id={`working-day-${day.day_of_week}`}
-                                            type="checkbox"
-                                            checked={day.enabled}
-                                            onChange={(event) => updateDay(day.day_of_week, { enabled: event.target.checked })}
-                                        />
-                                        <span>Aberto</span>
-                                    </label>
-                                    <span className="working-hours__day-total">
-                                        {day.enabled ? formatDuration(dayTotalMinutes(day)) : 'Fechado'}
-                                    </span>
-                                </div>
-
-                                {day.enabled ? (
-                                    <div className="working-hours__periods">
-                                        {day.periods.length === 0 && (
-                                            <p className="working-hours__no-periods">Este dia está aberto, mas ainda não tem períodos. Adicione um período ou feche o dia.</p>
-                                        )}
-                                        {day.periods.map((period, periodIndex) => (
-                                            <div className="working-hours__period" key={`${day.day_of_week}-${periodIndex}`}>
-                                                <span className="working-hours__period-number">Período {periodIndex + 1}</span>
-                                                <label className="working-hours__time" htmlFor={`working-open-${day.day_of_week}-${periodIndex}`}>
-                                                    <span>Início</span>
-                                                    <input
-                                                        id={`working-open-${day.day_of_week}-${periodIndex}`}
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        autoComplete="off"
-                                                        maxLength={5}
-                                                        placeholder="09:00"
-                                                        aria-label={`${weekdays[day.day_of_week]}, período ${periodIndex + 1}, horário de início`}
-                                                        aria-invalid={Boolean(validationErrors[day.day_of_week])}
-                                                        aria-describedby={validationErrors[day.day_of_week] ? `working-day-${day.day_of_week}-error` : undefined}
-                                                        value={period.opens_at}
-                                                        onChange={(event) => updateTime(day.day_of_week, periodIndex, 'opens_at', event.target.value)}
-                                                        onBlur={() => normalizeTime(day.day_of_week, periodIndex, 'opens_at')}
-                                                    />
-                                                </label>
-                                                <label className="working-hours__time" htmlFor={`working-close-${day.day_of_week}-${periodIndex}`}>
-                                                    <span>Término</span>
-                                                    <input
-                                                        id={`working-close-${day.day_of_week}-${periodIndex}`}
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        autoComplete="off"
-                                                        maxLength={5}
-                                                        placeholder="12:00"
-                                                        aria-label={`${weekdays[day.day_of_week]}, período ${periodIndex + 1}, horário de término`}
-                                                        aria-invalid={Boolean(validationErrors[day.day_of_week])}
-                                                        aria-describedby={validationErrors[day.day_of_week] ? `working-day-${day.day_of_week}-error` : undefined}
-                                                        value={period.closes_at}
-                                                        onChange={(event) => updateTime(day.day_of_week, periodIndex, 'closes_at', event.target.value)}
-                                                        onBlur={() => normalizeTime(day.day_of_week, periodIndex, 'closes_at')}
-                                                    />
-                                                </label>
-                                                <button
-                                                    className="working-hours__remove"
-                                                    type="button"
-                                                    onClick={() => removePeriod(day.day_of_week, periodIndex)}
-                                                    aria-label={`Remover período ${periodIndex + 1} de ${weekdays[day.day_of_week]}`}
-                                                >
-                                                    Remover
-                                                </button>
-                                            </div>
-                                        ))}
-                                        {validationErrors[day.day_of_week] && (
-                                            <p className="working-hours__day-error" id={`working-day-${day.day_of_week}-error`} role="alert">{validationErrors[day.day_of_week]}</p>
-                                        )}
-                                        <button className="working-hours__add" type="button" onClick={() => addPeriod(day.day_of_week)}>
-                                            <span aria-hidden="true">+</span> Adicionar período
-                                        </button>
-                                        <div className="working-hours__quick-actions" aria-label={`Ações rápidas para ${weekdays[day.day_of_week]}`}>
-                                            <button
-                                                className="working-hours__quick"
-                                                type="button"
-                                                onClick={() => copySchedule(day.day_of_week, WEEKDAY_INDICES)}
-                                                aria-label={`Copiar horário de ${weekdays[day.day_of_week]} para segunda a sexta`}
-                                            >
-                                                Copiar para seg–sex
-                                            </button>
-                                            <button
-                                                className="working-hours__quick"
-                                                type="button"
-                                                onClick={() => copySchedule(day.day_of_week, ALL_DAY_INDICES)}
-                                                aria-label={`Copiar horário de ${weekdays[day.day_of_week]} para todos os dias`}
-                                            >
-                                                Copiar para todos
-                                            </button>
-                                            <button
-                                                className="working-hours__quick working-hours__quick--close"
-                                                type="button"
-                                                onClick={() => closeDay(day.day_of_week)}
-                                                aria-label={`Fechar ${weekdays[day.day_of_week]}`}
-                                            >
-                                                Fechar dia
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="working-hours__closed" aria-label={`${weekdays[day.day_of_week]} fechado`}>Fechado</p>
-                                )}
-                            </fieldset>
+                            <WorkingDayFieldset
+                                key={day.day_of_week}
+                                day={day}
+                                error={validationErrors[day.day_of_week]}
+                                actions={dayActions}
+                            />
                         ))}
                     </div>
 
@@ -426,26 +242,12 @@ export default function WorkingHours() {
                     </div>
 
                     {conflicts && (
-                        <section className="working-hours__conflicts" aria-labelledby="working-hours-conflicts-title" role="alert">
-                            <h3 id="working-hours-conflicts-title">Revise os agendamentos afetados</h3>
-                            <p>{conflicts.total} {conflicts.total === 1 ? 'agendamento confirmado ficará' : 'agendamentos confirmados ficarão'} fora dos novos períodos. Salvar não altera nem cancela essas reservas; novos agendamentos passarão a respeitar a grade salva.</p>
-                            {conflicts.items.length > 0 && (
-                                <ul>
-                                    {conflicts.items.map((appointment) => (
-                                        <li key={appointment.id}>
-                                            <strong>{appointment.customer_name}</strong> · {formatAppointmentDate(appointment.starts_at)}
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                            {conflicts.total > conflicts.items.length && <p>Exibindo {conflicts.items.length} de {conflicts.total} agendamentos.</p>}
-                            <div className="dashboard-management__actions">
-                                <button className="dashboard-management__secondary" type="button" onClick={() => setConflicts(null)} disabled={saving}>Revisar horários</button>
-                                <button className="dashboard-management__primary" type="button" onClick={() => saveSchedule(true)} disabled={saving}>
-                                    {saving ? 'Salvando...' : 'Salvar e manter agendamentos'}
-                                </button>
-                            </div>
-                        </section>
+                        <ConflictsReview
+                            conflicts={conflicts}
+                            saving={saving}
+                            onReview={() => setConflicts(null)}
+                            onConfirm={() => saveSchedule(true)}
+                        />
                     )}
 
                     {saveError && <p className="dashboard-management__message dashboard-management__message--error working-hours__feedback" role="alert">{saveError}</p>}

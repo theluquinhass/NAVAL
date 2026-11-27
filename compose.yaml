@@ -1,0 +1,51 @@
+# NAVAL — ambiente de desenvolvimento.
+#   ./naval dev        (ou: docker compose up --build)
+# App:  http://localhost:5173   (Vite com HMR; /api é encaminhado para a API)
+# API:  http://localhost:3000   (nodemon; recarrega ao salvar arquivos em backend/src)
+# O banco é o projeto Supabase configurado em backend/.env e frontend/.env.
+# Documentação: docs/docker.md
+
+name: naval
+
+services:
+  api:
+    build:
+      context: ./backend
+      target: dev
+    env_file:
+      - path: ./backend/.env
+        required: true
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      # Origem do navegador: o app roda na porta publicada do Vite.
+      CORS_ORIGIN: http://localhost:${NAVAL_WEB_PORT:-5173}
+    ports:
+      - "${NAVAL_API_PORT:-3000}:3000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/test:/app/test
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+
+  web:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      # Destino do proxy /api do Vite dentro da rede do compose.
+      API_PROXY_TARGET: http://api:3000
+    ports:
+      - "${NAVAL_WEB_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      # node_modules fica no container (instalado na imagem), não no seu disco.
+      # Use "./naval dev" (que passa -V) para recriá-lo depois de mudar o package.json.
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy

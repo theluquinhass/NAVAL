@@ -1,0 +1,46 @@
+# NAVAL — build de produção rodando localmente.
+#   ./naval prod       (ou: docker compose -f compose.prod.yaml up --build -d)
+# App: http://localhost:8080  (nginx serve o build e encaminha /api para a API)
+# A API não é publicada no host: só o nginx fala com ela, pela rede interna.
+# Documentação: docs/docker.md
+
+name: naval-prod
+
+services:
+  api:
+    build:
+      context: ./backend
+      target: prod
+    env_file:
+      - path: ./backend/.env
+        required: true
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Obrigatório em produção. Deve ser exatamente a origem que o navegador usa.
+      CORS_ORIGIN: ${NAVAL_PUBLIC_ORIGIN:-http://localhost:8080}
+    expose:
+      - "3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      target: prod
+    ports:
+      - "${NAVAL_HTTP_PORT:-8080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

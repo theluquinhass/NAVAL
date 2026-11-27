@@ -42,6 +42,13 @@ app.use(cors({
 
 app.use(express.json())
 app.use(requestTiming)
+
+// Liveness probe for Docker/hosting health checks. Public and registered before the
+// auth-protected routers, which would otherwise answer 401.
+app.get('/health', (req, res) => {
+    return res.status(200).json({ status: 'ok' })
+})
+
 app.use(publicBookingRoutes)
 app.use(authMiddleware, barbershopRoutes)
 app.use(authMiddleware, serviceRoutes)

@@ -28,5 +28,23 @@ api.interceptors.request.use(async (config) =>{
     }
 })
 
+// An authenticated request rejected with 401 means the session is no longer valid
+// (revoked token, deleted user). Signing out clears the session, and ProtectedRoute
+// then redirects to /login instead of leaving every page stuck on a load error.
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const sentToken = Boolean(error.config?.headers?.Authorization)
+        if (error.response?.status === 401 && sentToken) {
+            try {
+                await supabase.auth.signOut({ scope: 'local' })
+            } catch (signOutError) {
+                console.error('Erro ao encerrar sessao expirada', signOutError)
+            }
+        }
+        return Promise.reject(error)
+    }
+)
+
 export default api
 

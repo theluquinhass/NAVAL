@@ -154,6 +154,9 @@ export default function DatePicker({
     const previousDisabled = Boolean(min && currentMonth <= min.slice(0, 7))
     const nextDisabled = Boolean(max && currentMonth >= max.slice(0, 7))
     const selectedDateLabel = value ? `${ariaLabel}: ${formatDate(value)}` : ariaLabel
+    // aria-required/aria-invalid are not valid on role=button, so state is announced in the label.
+    const stateLabel = [required && 'obrigatório', invalid && 'inválido'].filter(Boolean).join(', ')
+    const triggerLabel = `${selectedDateLabel}${stateLabel ? ` (${stateLabel})` : ''}. Abrir calendário`
 
     return (
         <div className={`naval-date-picker${compact ? ' naval-date-picker--compact' : ''}${invalid ? ' naval-date-picker--invalid' : ''}`} data-date-picker={triggerId}>
@@ -162,12 +165,10 @@ export default function DatePicker({
                 id={triggerId}
                 className="naval-date-picker__trigger"
                 type="button"
-                aria-label={`${selectedDateLabel}. Abrir calendário`}
+                aria-label={triggerLabel}
                 aria-haspopup="dialog"
                 aria-expanded={open}
                 aria-controls={calendarId}
-                aria-required={required || undefined}
-                aria-invalid={invalid || undefined}
                 aria-describedby={describedBy}
                 disabled={disabled}
                 onClick={() => {

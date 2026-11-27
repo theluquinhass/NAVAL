@@ -9,8 +9,8 @@ const createdAppointment = {
     service_id: '8d8c9f3a-59f0-4d8c-9f0a-112233445566',
     customer_name: 'Ana Souza',
     customer_phone: '+55 (85) 99999-1234',
-    starts_at: '2026-11-26T13:30:00.000Z',
-    ends_at: '2026-11-26T14:00:00.000Z',
+    starts_at: '2099-11-26T13:30:00.000Z',
+    ends_at: '2099-11-26T14:00:00.000Z',
     status: 'confirmed'
 }
 
@@ -78,7 +78,7 @@ const validPayload = {
     customerName: 'Ana Souza',
     customerPhone: '+55 (85) 99999-1234',
     serviceId: '8d8c9f3a-59f0-4d8c-9f0a-112233445566',
-    startsAt: '2026-11-26T10:30:00-03:00'
+    startsAt: '2099-11-26T10:30:00-03:00'
 }
 
 test('rejects an invalid payload with HTTP 400 without calling the service', async () => {

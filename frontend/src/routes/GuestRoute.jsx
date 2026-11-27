@@ -5,7 +5,7 @@ const GuestRoute = ({children}) => {
     const {user, loading} = useAuth()
 
     if(loading){
-        return <p>Carregando...</p>
+        return <p className="dashboard-loading" role="status">Carregando...</p>
     }
 
     if(user){

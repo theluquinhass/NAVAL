@@ -73,6 +73,7 @@ O projeto tem foco inicial em barbearias de Parelhas/RN e região, buscando vali
 - Supabase (PostgreSQL), Row Level Security (RLS) e migrations versionadas
 
 ### Infraestrutura
+- Docker e Docker Compose (desenvolvimento e build de produção local, com nginx)
 - Git e GitHub
 - GitHub Actions para CI (Node 22)
 - Supabase CLI para aplicar migrations
@@ -84,6 +85,11 @@ NAVAL/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                 # backend: testes; frontend: lint, testes e build
+├── docs/
+│   └── docker.md                  # guia completo do Docker Compose e do ./naval
+├── compose.yaml                   # Docker: ambiente de desenvolvimento (app :5173, API :3000)
+├── compose.prod.yaml              # Docker: build de produção local (nginx :8080)
+├── naval                          # comandos de inicialização (./naval help)
 ├── backend/
 │   ├── src/
 │   │   ├── config/                # cliente Supabase
@@ -103,6 +109,7 @@ NAVAL/
 │   │   └── verify_migrations.sql  # compara versões por impressão do schema (read-only)
 │   ├── .env.example
 │   ├── .gitignore
+│   ├── Dockerfile                 # estágios dev (nodemon) e prod
 │   ├── package.json
 │   └── package-lock.json
 ├── frontend/
@@ -123,8 +130,10 @@ NAVAL/
 │   ├── public/
 │   ├── .env.example
 │   ├── .gitignore
+│   ├── Dockerfile                 # estágios dev (Vite), build e prod (nginx)
 │   ├── eslint.config.js
 │   ├── index.html
+│   ├── nginx.conf                 # SPA + proxy /api em produção
 │   ├── package.json
 │   ├── package-lock.json
 │   └── vite.config.js             # plugin React, proxy /api e configuração do Vitest
@@ -134,13 +143,31 @@ NAVAL/
 
 ## 🚀 Começando
 
-### Pré-requisitos
+### Com Docker (caminho mais rápido)
+
+Se você tem Docker e Docker Compose v2, não precisa instalar Node.js:
+
+```bash
+./naval setup   # cria backend/.env e frontend/.env a partir dos exemplos
+# preencha os dois .env com a URL e a chave publicável do seu projeto Supabase
+./naval dev     # app em http://localhost:5173 e API em http://localhost:3000, com hot reload
+```
+
+Outros comandos úteis: `./naval prod` (build de produção local em http://localhost:8080), `./naval test`, `./naval logs`, `./naval stop` e `./naval help`. O passo a passo completo, a arquitetura e a solução de problemas estão em **[docs/docker.md](docs/docker.md)**.
+
+O banco continua sendo o projeto Supabase remoto, com as migrations aplicadas (veja [Banco de dados](#️-banco-de-dados)).
+
+### Sem Docker
+
+Instale o Node.js e rode a API e o app direto na sua máquina.
+
+#### Pré-requisitos
 
 - **Node.js 22 ou superior** (`node --version`) e npm.
 - Um projeto no [Supabase](https://supabase.com/) com Auth habilitado.
 - [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) instalada para aplicar as migrations.
 
-### 1. Instale as dependências
+#### 1. Instale as dependências
 
 ```bash
 cd backend
@@ -150,7 +177,7 @@ cd ../frontend
 npm install
 ```
 
-### 2. Configure o ambiente
+#### 2. Configure o ambiente
 
 Copie os arquivos de exemplo e preencha com os valores do seu projeto:
 
@@ -171,13 +198,13 @@ cp frontend/.env.example frontend/.env
 
 Nunca commite os arquivos `.env`: apenas os `.env.example` versionados.
 
-### 3. Proxy de desenvolvimento `/api`
+#### 3. Proxy de desenvolvimento `/api`
 
 O `frontend/vite.config.js` possui um proxy de `/api` para `http://localhost:3000` com `changeOrigin: true` e remoção do prefixo `/api`. Assim, uma chamada do frontend para `/api/services` chega ao backend como `/services`.
 
 Com `VITE_API_URL=/api`, o navegador fala apenas com o Vite (sem problemas de CORS). Se usar `VITE_API_URL=http://localhost:3000`, as requisições vão direto ao backend e `CORS_ORIGIN` precisa corresponder à origem do frontend.
 
-### 4. Rode localmente
+#### 4. Rode localmente
 
 ```bash
 # Terminal 1 — API (http://localhost:3000)
@@ -217,6 +244,8 @@ O script usa Docker, cria o container `naval-rls-test-<pid>`, aplica o shim `aut
 > ℹ️ Dois comportamentos são intencionais e estão cobertos pela suíte: horários de funcionamento são públicos para `anon` **e** `authenticated`; e um estorno cross-tenant é barrado primeiro pelo `BEFORE trigger`, que consulta `payments` sob RLS e não vê o pagamento do outro tenant.
 
 ## ✅ Testes e CI
+
+Com Docker, `./naval test` roda tudo isso dentro dos containers (veja [docs/docker.md](docs/docker.md#-testes)). Sem Docker:
 
 ```bash
 # Backend (node:test)

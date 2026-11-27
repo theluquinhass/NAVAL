@@ -15,3 +15,6 @@ coverage/
 # Logs and OS files
 *.log
 .DS_Store
+# Claude Code / ECC: estado local do instalador (caminhos da máquina) e configurações pessoais
+.claude/ecc/
+.claude/settings.local.json

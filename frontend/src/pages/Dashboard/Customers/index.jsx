@@ -6,6 +6,7 @@ import {
     updateCustomer
 } from '../../../services/customersApi.js'
 import { formatDateTime, getErrorMessage } from '../../../utils/dashboard.js'
+import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
 import '../management.css'
 import './customers.css'
 
@@ -36,20 +37,23 @@ export default function Customers() {
     const [formError, setFormError] = useState('')
     const [message, setMessage] = useState('')
     const [saving, setSaving] = useState(false)
+    const beginCustomersRequest = useLatestRequest()
 
     const loadCustomers = useCallback(async (term = search) => {
+        const isCurrent = beginCustomersRequest()
         setLoading(true)
         setLoadError('')
         try {
             const result = await listCustomers(term.trim())
+            if (!isCurrent()) return
             setCustomers(result)
             setSelectedId((current) => result.some((customer) => customer.id === current) ? current : '')
         } catch (error) {
-            setLoadError(getErrorMessage(error, 'Não foi possível carregar os clientes.'))
+            if (isCurrent()) setLoadError(getErrorMessage(error, 'Não foi possível carregar os clientes.'))
         } finally {
-            setLoading(false)
+            if (isCurrent()) setLoading(false)
         }
-    }, [search])
+    }, [search, beginCustomersRequest])
 
     useEffect(() => {
         const timeout = window.setTimeout(() => loadCustomers(search), 220)

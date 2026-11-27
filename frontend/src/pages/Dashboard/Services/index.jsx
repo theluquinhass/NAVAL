@@ -6,6 +6,7 @@ import {
     updateService
 } from '../../../services/servicesApi.js'
 import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
+import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
 import '../management.css'
 import './services.css'
 
@@ -20,35 +21,36 @@ export default function Services() {
     const [saving, setSaving] = useState(false)
     const [editingId, setEditingId] = useState(null)
     const [form, setForm] = useState(emptyForm)
+    const beginServicesRequest = useLatestRequest()
 
     const loadServices = useCallback(async () => {
+        const isCurrent = beginServicesRequest()
         setLoading(true)
         setLoadError('')
         try {
-            setServices(await listServices())
+            const data = await listServices()
+            if (isCurrent()) setServices(data)
         } catch (error) {
-            setLoadError(getErrorMessage(error, 'Não foi possível carregar os serviços.'))
+            if (isCurrent()) setLoadError(getErrorMessage(error, 'Não foi possível carregar os serviços.'))
         } finally {
-            setLoading(false)
+            if (isCurrent()) setLoading(false)
         }
-    }, [])
+    }, [beginServicesRequest])
 
     useEffect(() => {
-        let active = true
+        const isCurrent = beginServicesRequest()
 
         listServices()
             .then((data) => {
-                if (active) setServices(data)
+                if (isCurrent()) setServices(data)
             })
             .catch((error) => {
-                if (active) setLoadError(getErrorMessage(error, 'Não foi possível carregar os serviços.'))
+                if (isCurrent()) setLoadError(getErrorMessage(error, 'Não foi possível carregar os serviços.'))
             })
             .finally(() => {
-                if (active) setLoading(false)
+                if (isCurrent()) setLoading(false)
             })
-
-        return () => { active = false }
-    }, [])
+    }, [beginServicesRequest])
 
     function handleChange(event) {
         const { name, value } = event.target

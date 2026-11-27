@@ -1,0 +1,15 @@
+# O contexto de build só precisa de package*.json e src/.
+# Segredos ficam fora da imagem: o .env é injetado em tempo de execução (env_file no compose).
+.env
+.env.*
+node_modules
+coverage
+test
+postman
+.postman
+supabase
+.git
+.gitignore
+*.log
+Dockerfile
+.dockerignore

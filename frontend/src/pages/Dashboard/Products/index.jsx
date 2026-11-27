@@ -8,6 +8,7 @@ import {
     updateProduct
 } from '../../../services/productsApi.js'
 import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
+import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
 import '../management.css'
 import './products.css'
 
@@ -120,29 +121,30 @@ export default function Products() {
     const [form, setForm] = useState('')
     const [editingProduct, setEditingProduct] = useState(null)
     const [busyId, setBusyId] = useState('')
+    const beginProductsRequest = useLatestRequest()
 
-    const loadProducts = useCallback(async (isActive = () => true) => {
+    const loadProducts = useCallback(async () => {
+        const isCurrent = beginProductsRequest()
         try {
             const nextProducts = await listProducts()
-            if (isActive()) {
+            if (isCurrent()) {
                 setProducts(nextProducts)
                 setError('')
             }
         } catch (loadError) {
-            if (!isActive()) return
+            if (!isCurrent()) return
             setProducts([])
             setError(getErrorMessage(loadError, 'Não foi possível carregar os produtos.'))
         } finally {
-            if (isActive()) setLoading(false)
+            if (isCurrent()) setLoading(false)
         }
-    }, [])
+    }, [beginProductsRequest])
 
     useEffect(() => {
-        let active = true
         // State updates happen after the request resolves, not during the effect body.
+        // Stale responses and post-unmount updates are dropped by useLatestRequest.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        loadProducts(() => active)
-        return () => { active = false }
+        loadProducts()
     }, [loadProducts])
 
 

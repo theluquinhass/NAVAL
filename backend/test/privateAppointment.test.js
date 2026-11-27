@@ -18,17 +18,17 @@ const createdAppointment = {
     service_id: 'service-1',
     customer_name: 'Ana Souza',
     customer_phone: '+55 (85) 99999-1234',
-    starts_at: '2026-11-26T13:30:00.000Z',
-    ends_at: '2026-11-26T14:15:00.000Z',
+    starts_at: '2099-11-26T13:30:00.000Z',
+    ends_at: '2099-11-26T14:15:00.000Z',
     status: 'confirmed',
-    created_at: '2026-11-25T12:00:00.000Z'
+    created_at: '2099-11-25T12:00:00.000Z'
 }
 
 const payload = {
     customerName: 'Ana Souza',
     customerPhone: '+55 (85) 99999-1234',
     serviceId: service.id,
-    startsAt: '2026-11-26T10:30:00-03:00'
+    startsAt: '2099-11-26T10:30:00-03:00'
 }
 
 const supabase = {
@@ -184,7 +184,7 @@ test('calculates ends_at from the service duration stored in the database', asyn
     serviceResult = { data: { ...service, duration: 60 }, error: null }
     await createPrivateAppointment(supabase, 'user-1', payload)
 
-    assert.equal(insertedAppointment.ends_at, '2026-11-26T14:30:00.000Z')
+    assert.equal(insertedAppointment.ends_at, '2099-11-26T14:30:00.000Z')
     assert.notEqual(insertedAppointment.ends_at, createdAppointment.ends_at)
 })
 
@@ -198,8 +198,8 @@ test('inserts the server-resolved profile, trusted service data, and confirmed s
     assert.equal(insertedAppointment.service_id, 'resolved-service-id')
     assert.equal(insertedAppointment.customer_name, payload.customerName)
     assert.equal(insertedAppointment.customer_phone, payload.customerPhone)
-    assert.equal(insertedAppointment.starts_at, '2026-11-26T13:30:00.000Z')
-    assert.equal(insertedAppointment.ends_at, '2026-11-26T14:00:00.000Z')
+    assert.equal(insertedAppointment.starts_at, '2099-11-26T13:30:00.000Z')
+    assert.equal(insertedAppointment.ends_at, '2099-11-26T14:00:00.000Z')
     assert.equal(insertedAppointment.status, 'confirmed')
     assert.deepEqual(Object.keys(insertedAppointment).sort(), [
         'customer_name', 'customer_phone', 'ends_at', 'profile_id', 'service_id', 'starts_at', 'status'

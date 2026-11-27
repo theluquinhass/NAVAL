@@ -77,7 +77,7 @@ export default function Dashboard() {
         return () => { active = false }
     }, [from, to, requestKey])
 
-    if (authLoading) return <p className="dashboard-loading">Carregando dashboard...</p>
+    if (authLoading) return <p className="dashboard-loading" role="status">Carregando dashboard...</p>
 
     const { hour } = partsInFortaleza(new Date())
     const profileName = profile?.barberName || profile?.name || 'Barbeiro'
