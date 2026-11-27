@@ -17,7 +17,7 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--strict
 
 FROM deps AS build
 COPY --chown=node:node . .
-# As variáveis VITE_* são embutidas no bundle durante o build (lidas de frontend/.env).
+# As variáveis VITE_* são embutidas no bundle durante o build (lidas de apps/frontend/.env).
 # Elas são públicas por definição: nunca coloque segredos em VITE_*.
 # VITE_API_URL é fixado em /api porque o nginx faz o proxy para a API.
 ENV VITE_API_URL=/api

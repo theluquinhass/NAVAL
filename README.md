@@ -44,7 +44,7 @@ O projeto tem foco inicial em barbearias de Parelhas/RN e região, buscando vali
 - [x] Respeito à duração de cada serviço.
 - [x] Controle de horários e períodos de funcionamento.
 - [x] Isolamento de dados entre barbearias (`barbershop_id` + RLS).
-- [x] Validação das operações no backend (`backend/src/validation/`).
+- [x] Validação das operações no backend (`apps/backend/src/validation/`).
 - [x] Testes automatizados de validações, serviços, rotas e regras de negócio.
 
 ### Ainda planejadas
@@ -82,61 +82,60 @@ O projeto tem foco inicial em barbearias de Parelhas/RN e região, buscando vali
 
 ```text
 NAVAL/
+├── apps/
+│   ├── backend/                   # API REST (Express)
+│   │   ├── src/
+│   │   │   ├── config/            # cliente Supabase
+│   │   │   ├── controllers/       # barbershop, scheduling, customers, finance, products, dashboard...
+│   │   │   ├── middlewares/       # autenticação, cache e timing
+│   │   │   ├── routes/            # rotas REST públicas e privadas
+│   │   │   ├── services/          # regras de negócio e acesso ao Supabase
+│   │   │   ├── validation/        # validações de payloads
+│   │   │   ├── app.js
+│   │   │   └── server.js
+│   │   ├── test/                  # testes com node:test
+│   │   ├── .env.example
+│   │   ├── Dockerfile             # estágios dev (nodemon) e prod
+│   │   ├── package.json
+│   │   └── package-lock.json
+│   └── frontend/                  # SPA (React + Vite)
+│       ├── src/
+│       │   ├── assets/            # artes e imagens do projeto
+│       │   ├── components/        # componentes; layout/ tem DashboardLayout, Header e Sidebar
+│       │   ├── contexts/          # autenticação, perfil e tema
+│       │   ├── hooks/
+│       │   ├── lib/               # cliente Supabase
+│       │   ├── pages/             # Landing, Login, Register, Setup, Booking, Dashboard/*
+│       │   ├── routes/            # rotas protegidas, de convidado e por perfil
+│       │   ├── services/          # clientes HTTP da API
+│       │   ├── styles/
+│       │   ├── utils/
+│       │   ├── App.jsx
+│       │   └── main.jsx
+│       ├── public/
+│       ├── .env.example
+│       ├── Dockerfile             # estágios dev (Vite), build e prod (nginx)
+│       ├── eslint.config.js
+│       ├── index.html
+│       ├── nginx.conf             # SPA + proxy /api em produção
+│       ├── package.json
+│       ├── package-lock.json
+│       └── vite.config.js         # plugin React, proxy /api e configuração do Vitest
+├── docs/
+│   └── docker.md                  # guia completo do Docker Compose e do ./naval
+├── supabase/                      # banco de dados (Supabase CLI roda a partir da raiz)
+│   ├── migrations/                # migrations SQL versionadas
+│   ├── rls_local_shim.sql         # shim local de auth/roles para testar RLS
+│   ├── rls_tests.sql              # suíte de RLS em transação descartável
+│   ├── run_rls_tests.sh           # executa a suíte em PostgreSQL local (Docker)
+│   └── verify_migrations.sql      # compara versões por impressão do schema (read-only)
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                 # backend: testes; frontend: lint, testes e build
-├── docs/
-│   └── docker.md                  # guia completo do Docker Compose e do ./naval
+├── AGENTS.md                      # guia para agentes de IA
 ├── compose.yaml                   # Docker: ambiente de desenvolvimento (app :5173, API :3000)
 ├── compose.prod.yaml              # Docker: build de produção local (nginx :8080)
 ├── naval                          # comandos de inicialização (./naval help)
-├── backend/
-│   ├── src/
-│   │   ├── config/                # cliente Supabase
-│   │   ├── controllers/           # barbershop, scheduling, customers, finance, products, dashboard...
-│   │   ├── middlewares/           # autenticação, cache e timing
-│   │   ├── routes/                # rotas REST públicas e privadas
-│   │   ├── services/              # regras de negócio e acesso ao Supabase
-│   │   ├── validation/            # validações de payloads
-│   │   ├── app.js
-│   │   └── server.js
-│   ├── test/                      # testes com node:test
-│   ├── supabase/
-│   │   ├── migrations/            # migrations SQL versionadas
-│   │   ├── rls_local_shim.sql     # shim local de auth/roles para testar RLS
-│   │   ├── rls_tests.sql          # suíte de RLS em transação descartável
-│   │   ├── run_rls_tests.sh       # executa a suíte em PostgreSQL local (Docker)
-│   │   └── verify_migrations.sql  # compara versões por impressão do schema (read-only)
-│   ├── .env.example
-│   ├── .gitignore
-│   ├── Dockerfile                 # estágios dev (nodemon) e prod
-│   ├── package.json
-│   └── package-lock.json
-├── frontend/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/            # componentes e layout
-│   │   ├── contexts/              # autenticação, perfil e tema
-│   │   ├── hooks/
-│   │   ├── layouts/
-│   │   ├── lib/                   # cliente Supabase
-│   │   ├── pages/                 # Landing, Login, Register, Setup, Booking, Dashboard/*
-│   │   ├── routes/                # rotas protegidas, de convidado e por perfil
-│   │   ├── services/              # clientes HTTP da API
-│   │   ├── styles/
-│   │   ├── utils/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── public/
-│   ├── .env.example
-│   ├── .gitignore
-│   ├── Dockerfile                 # estágios dev (Vite), build e prod (nginx)
-│   ├── eslint.config.js
-│   ├── index.html
-│   ├── nginx.conf                 # SPA + proxy /api em produção
-│   ├── package.json
-│   ├── package-lock.json
-│   └── vite.config.js             # plugin React, proxy /api e configuração do Vitest
 ├── .gitignore
 └── README.md
 ```
@@ -148,7 +147,7 @@ NAVAL/
 Se você tem Docker e Docker Compose v2, não precisa instalar Node.js:
 
 ```bash
-./naval setup   # cria backend/.env e frontend/.env a partir dos exemplos
+./naval setup   # cria apps/backend/.env e apps/frontend/.env a partir dos exemplos
 # preencha os dois .env com a URL e a chave publicável do seu projeto Supabase
 ./naval dev     # app em http://localhost:5173 e API em http://localhost:3000, com hot reload
 ```
@@ -170,10 +169,10 @@ Instale o Node.js e rode a API e o app direto na sua máquina.
 #### 1. Instale as dependências
 
 ```bash
-cd backend
+cd apps/backend
 npm install
 
-cd ../frontend
+cd ../apps/frontend
 npm install
 ```
 
@@ -182,25 +181,25 @@ npm install
 Copie os arquivos de exemplo e preencha com os valores do seu projeto:
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 | Arquivo | Variável | Descrição |
 |---|---|---|
-| `backend/.env` | `PORT` | Porta do servidor Express (padrão: `3000`). |
-| `backend/.env` | `CORS_ORIGIN` | Origens do frontend permitidas pelo CORS (dev: `http://localhost:5173`; múltiplas separadas por vírgula; obrigatório em produção). |
-| `backend/.env` | `SUPABASE_URL` | Project URL do Supabase. |
-| `backend/.env` | `SUPABASE_PUBLISHABLE_KEY` | Chave publicável/anon do Supabase. |
-| `frontend/.env` | `VITE_API_URL` | Base URL da API REST. Em dev, `/api` usa o proxy do Vite; `http://localhost:3000` acessa o backend diretamente. |
-| `frontend/.env` | `VITE_SUPABASE_URL` | Project URL do Supabase (cliente do navegador). |
-| `frontend/.env` | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável/anon do Supabase (cliente do navegador). |
+| `apps/backend/.env` | `PORT` | Porta do servidor Express (padrão: `3000`). |
+| `apps/backend/.env` | `CORS_ORIGIN` | Origens do frontend permitidas pelo CORS (dev: `http://localhost:5173`; múltiplas separadas por vírgula; obrigatório em produção). |
+| `apps/backend/.env` | `SUPABASE_URL` | Project URL do Supabase. |
+| `apps/backend/.env` | `SUPABASE_PUBLISHABLE_KEY` | Chave publicável/anon do Supabase. |
+| `apps/frontend/.env` | `VITE_API_URL` | Base URL da API REST. Em dev, `/api` usa o proxy do Vite; `http://localhost:3000` acessa o backend diretamente. |
+| `apps/frontend/.env` | `VITE_SUPABASE_URL` | Project URL do Supabase (cliente do navegador). |
+| `apps/frontend/.env` | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável/anon do Supabase (cliente do navegador). |
 
 Nunca commite os arquivos `.env`: apenas os `.env.example` versionados.
 
 #### 3. Proxy de desenvolvimento `/api`
 
-O `frontend/vite.config.js` possui um proxy de `/api` para `http://localhost:3000` com `changeOrigin: true` e remoção do prefixo `/api`. Assim, uma chamada do frontend para `/api/services` chega ao backend como `/services`.
+O `apps/frontend/vite.config.js` possui um proxy de `/api` para `http://localhost:3000` com `changeOrigin: true` e remoção do prefixo `/api`. Assim, uma chamada do frontend para `/api/services` chega ao backend como `/services`.
 
 Com `VITE_API_URL=/api`, o navegador fala apenas com o Vite (sem problemas de CORS). Se usar `VITE_API_URL=http://localhost:3000`, as requisições vão direto ao backend e `CORS_ORIGIN` precisa corresponder à origem do frontend.
 
@@ -208,35 +207,36 @@ Com `VITE_API_URL=/api`, o navegador fala apenas com o Vite (sem problemas de CO
 
 ```bash
 # Terminal 1 — API (http://localhost:3000)
-cd backend
+cd apps/backend
 npm run dev
 
 # Terminal 2 — App (http://localhost:5173)
-cd frontend
+cd apps/frontend
 npm run dev
 ```
 
 ## 🗄️ Banco de dados
 
-As migrations ficam em `backend/supabase/migrations/`. Para aplicá-las em um projeto remoto:
+As migrations ficam em `supabase/migrations/`. Para aplicá-las em um projeto remoto:
+
+Rode a partir da **raiz** do repositório (onde fica a pasta `supabase/`):
 
 ```bash
-cd backend
 supabase login
 supabase link --project-ref SEU_PROJECT_REF
 supabase db push
 ```
 
-Para conferir o que já está aplicado, execute o arquivo somente leitura `backend/supabase/verify_migrations.sql` no SQL Editor do Supabase (ou por um MCP de banco em modo somente leitura). Ele lista cada arquivo esperado e o status (`APLICADA`/`PENDENTE`) comparando colunas, constraints, funções, triggers, policies e índices. Não depende de `supabase_migrations.schema_migrations`, que não existe em todos os projetos; as consultas baseadas nessa tabela ficam comentadas no fim do arquivo para quem as tiver.
+Para conferir o que já está aplicado, execute o arquivo somente leitura `supabase/verify_migrations.sql` no SQL Editor do Supabase (ou por um MCP de banco em modo somente leitura). Ele lista cada arquivo esperado e o status (`APLICADA`/`PENDENTE`) comparando colunas, constraints, funções, triggers, policies e índices. Não depende de `supabase_migrations.schema_migrations`, que não existe em todos os projetos; as consultas baseadas nessa tabela ficam comentadas no fim do arquivo para quem as tiver.
 
 > ⚠️ **Atenção:** as migrations `010` a `013` (produtos/estoque/vendas, funções de venda, entradas de estoque/despesas e a flag `sells_products`) e as migrations `014`/`015` (idempotência e segurança financeira/de produtos, além dos RPCs de totais usados pelo backend) precisam estar aplicadas para o backend funcionar. No projeto conectado durante a validação deste trabalho, o schema já continha todas as 18 versões, inclusive `007`, `014` e `015`; a conferência foi feita por impressão do schema porque o projeto não registra histórico de migrations. Em outro projeto, rode o script acima antes de usar o módulo de produtos/financeiro. Nenhuma migration foi aplicada a um projeto remoto por este trabalho.
 
 ### Testes de RLS (local, sem tocar no remoto)
 
-A suíte `backend/supabase/rls_tests.sql` valida leitura, inserção, atualização e exclusão entre dois tenants fabricados, além das RPCs `security definer` e do acesso `anon`. Ela roda em um container PostgreSQL descartável com todas as migrations aplicadas e termina em `ROLLBACK`, sem gravar dados.
+A suíte `supabase/rls_tests.sql` valida leitura, inserção, atualização e exclusão entre dois tenants fabricados, além das RPCs `security definer` e do acesso `anon`. Ela roda em um container PostgreSQL descartável com todas as migrations aplicadas e termina em `ROLLBACK`, sem gravar dados.
 
 ```bash
-backend/supabase/run_rls_tests.sh
+supabase/run_rls_tests.sh
 ```
 
 O script usa Docker, cria o container `naval-rls-test-<pid>`, aplica o shim `auth.uid()` e remove o container ao final. Resultado esperado: `TODOS OS TESTES DE RLS PASSARAM` (72 verificações).
@@ -249,11 +249,11 @@ Com Docker, `./naval test` roda tudo isso dentro dos containers (veja [docs/dock
 
 ```bash
 # Backend (node:test)
-cd backend
+cd apps/backend
 npm test
 
 # Frontend
-cd frontend
+cd apps/frontend
 npm run lint
 npm run test
 npm run build

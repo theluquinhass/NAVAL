@@ -3,7 +3,7 @@
 # Nunca conecta em projetos remotos nem usa service_role.
 set -euo pipefail
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 container="naval-rls-test-$$"
 
 cleanup() {
@@ -28,17 +28,17 @@ for _ in $(seq 1 30); do
     sleep 1
 done
 
-docker cp "$root/backend/supabase/rls_local_shim.sql" "$container:/tmp/shim.sql" >/dev/null
+docker cp "$root/supabase/rls_local_shim.sql" "$container:/tmp/shim.sql" >/dev/null
 docker exec "$container" psql -U postgres -d naval \
     -v ON_ERROR_STOP=1 --single-transaction -q -f /tmp/shim.sql
 
-docker cp "$root/backend/supabase/migrations" "$container:/tmp/migrations" >/dev/null
+docker cp "$root/supabase/migrations" "$container:/tmp/migrations" >/dev/null
 docker exec "$container" sh -c '
     for file in $(ls /tmp/migrations/*.sql | sort); do
         psql -U postgres -d naval -v ON_ERROR_STOP=1 --single-transaction -q -f "$file" || exit 1
     done
 '
 
-docker cp "$root/backend/supabase/rls_tests.sql" "$container:/tmp/rls-tests.sql" >/dev/null
+docker cp "$root/supabase/rls_tests.sql" "$container:/tmp/rls-tests.sql" >/dev/null
 docker exec "$container" psql -U postgres -d naval \
     -v ON_ERROR_STOP=1 -P pager=off -f /tmp/rls-tests.sql

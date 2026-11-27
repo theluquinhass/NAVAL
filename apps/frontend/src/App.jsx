@@ -11,7 +11,7 @@ import GuestRoute from './routes/GuestRoute'
 import ProfileRoute from './routes/ProfileRoute'
 import SetupRoute from './routes/SetupRoute'
 import ProductsRoute from './routes/ProductsRoute'
-import DashboardLayout from './layouts/DashboardLayout.jsx'
+import DashboardLayout from './components/layout/DashboardLayout.jsx'
 
 const Services = lazy(() => import('./pages/Dashboard/Services'))
 const WorkingHours = lazy(() => import('./pages/Dashboard/WorkingHours'))

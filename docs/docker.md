@@ -35,7 +35,7 @@ No Linux, seu usuário precisa ter acesso ao Docker sem `sudo` (grupo `docker`).
 ## 🚀 Primeira vez (3 comandos)
 
 ```bash
-./naval setup   # cria backend/.env e frontend/.env a partir dos exemplos
+./naval setup   # cria apps/backend/.env e apps/frontend/.env a partir dos exemplos
 # edite os dois .env com a URL e a chave publicável do seu projeto Supabase
 ./naval dev     # sobe tudo; abra http://localhost:5173
 ```
@@ -48,13 +48,13 @@ O compose lê os mesmos arquivos `.env` usados sem Docker. Nenhum segredo fica e
 
 | Arquivo | Variável | Obrigatória | Observação |
 |---|---|---|---|
-| `backend/.env` | `SUPABASE_URL` | sim | Project URL do Supabase |
-| `backend/.env` | `SUPABASE_PUBLISHABLE_KEY` | sim | Chave publicável/anon |
-| `backend/.env` | `PORT` | não | Ignorada no Docker: a API sempre escuta na `3000` **dentro** do container. Para mudar a porta no seu computador, use `NAVAL_API_PORT`. |
-| `backend/.env` | `CORS_ORIGIN` | não | Ignorada no Docker: o compose define a origem certa para cada ambiente (veja [Portas e variáveis](#-portas-e-variáveis)). |
-| `frontend/.env` | `VITE_SUPABASE_URL` | sim | Igual a `SUPABASE_URL` |
-| `frontend/.env` | `VITE_SUPABASE_PUBLISHABLE_KEY` | sim | Igual a `SUPABASE_PUBLISHABLE_KEY` |
-| `frontend/.env` | `VITE_API_URL` | não | Deixe `/api`. Em produção ela é sempre forçada para `/api`. |
+| `apps/backend/.env` | `SUPABASE_URL` | sim | Project URL do Supabase |
+| `apps/backend/.env` | `SUPABASE_PUBLISHABLE_KEY` | sim | Chave publicável/anon |
+| `apps/backend/.env` | `PORT` | não | Ignorada no Docker: a API sempre escuta na `3000` **dentro** do container. Para mudar a porta no seu computador, use `NAVAL_API_PORT`. |
+| `apps/backend/.env` | `CORS_ORIGIN` | não | Ignorada no Docker: o compose define a origem certa para cada ambiente (veja [Portas e variáveis](#-portas-e-variáveis)). |
+| `apps/frontend/.env` | `VITE_SUPABASE_URL` | sim | Igual a `SUPABASE_URL` |
+| `apps/frontend/.env` | `VITE_SUPABASE_PUBLISHABLE_KEY` | sim | Igual a `SUPABASE_PUBLISHABLE_KEY` |
+| `apps/frontend/.env` | `VITE_API_URL` | não | Deixe `/api`. Em produção ela é sempre forçada para `/api`. |
 
 O `./naval dev` e o `./naval prod` conferem se as variáveis obrigatórias estão preenchidas antes de subir. Eles mostram apenas o **nome** da variável que falta, nunca o valor.
 
@@ -104,10 +104,10 @@ Desenvolvimento (compose.yaml)                    Produção local (compose.prod
 | `compose.yaml` | Ambiente de desenvolvimento (serviços `api` e `web`). |
 | `compose.prod.yaml` | Build de produção rodando localmente. |
 | `naval` | Script com os comandos acima. |
-| `backend/Dockerfile` | Imagem da API, com os estágios `dev` (nodemon) e `prod` (só dependências de produção). |
-| `frontend/Dockerfile` | Imagem do app, com os estágios `dev` (Vite), `build` e `prod` (nginx). |
-| `frontend/nginx.conf` | Serve o SPA, faz o proxy de `/api`, define cache, gzip e cabeçalhos de segurança. |
-| `backend/.dockerignore`, `frontend/.dockerignore` | Mantêm `node_modules`, testes e segredos fora das imagens. |
+| `apps/backend/Dockerfile` | Imagem da API, com os estágios `dev` (nodemon) e `prod` (só dependências de produção). |
+| `apps/frontend/Dockerfile` | Imagem do app, com os estágios `dev` (Vite), `build` e `prod` (nginx). |
+| `apps/frontend/nginx.conf` | Serve o SPA, faz o proxy de `/api`, define cache, gzip e cabeçalhos de segurança. |
+| `apps/backend/.dockerignore`, `apps/frontend/.dockerignore` | Mantêm `node_modules`, testes e segredos fora das imagens. |
 
 ## 💻 Desenvolvimento
 
@@ -119,8 +119,8 @@ Desenvolvimento (compose.yaml)                    Produção local (compose.prod
 - **API:** http://localhost:3000 (por exemplo, http://localhost:3000/health)
 
 **Hot reload**
-- `frontend/` inteiro é montado no container. Ao salvar, o Vite atualiza o navegador na hora.
-- `backend/src` e `backend/test` são montados no container. Ao salvar, o nodemon reinicia a API.
+- `apps/frontend/` inteiro é montado no container. Ao salvar, o Vite atualiza o navegador na hora.
+- `apps/backend/src` e `apps/backend/test` são montados no container. Ao salvar, o nodemon reinicia a API.
 
 **Dependências**
 - O `node_modules` do frontend vive **dentro** do container, não no seu disco. Isso evita misturar binários do seu sistema com os do Linux do container.
@@ -128,7 +128,7 @@ Desenvolvimento (compose.yaml)                    Produção local (compose.prod
 - Mudanças no `package.json` do backend também exigem rodar `./naval dev` de novo.
 
 **Arquivos criados pelos containers**
-- Os containers rodam com o usuário `node` (UID 1000). No Linux, se o seu UID também é 1000 (`id -u`), arquivos gerados no volume (como `frontend/dist` do `./naval test`) ficam com você como dono.
+- Os containers rodam com o usuário `node` (UID 1000). No Linux, se o seu UID também é 1000 (`id -u`), arquivos gerados no volume (como `apps/frontend/dist` do `./naval test`) ficam com você como dono.
 
 ## 🏭 Produção local
 
@@ -170,7 +170,7 @@ NAVAL_PUBLIC_ORIGIN=http://192.168.0.10:8080 ./naval prod
 ```
 
 - Os testes rodam nas mesmas imagens do ambiente de dev, com Node 22, igual ao CI (`.github/workflows/ci.yml`).
-- O `./naval rls` usa o script `backend/supabase/run_rls_tests.sh`. Ele cria um PostgreSQL descartável, aplica as migrations, roda os testes em uma transação que termina em `ROLLBACK` e remove o container. **Nunca conecta no Supabase remoto.**
+- O `./naval rls` usa o script `supabase/run_rls_tests.sh`. Ele cria um PostgreSQL descartável, aplica as migrations, roda os testes em uma transação que termina em `ROLLBACK` e remove o container. **Nunca conecta no Supabase remoto.**
 
 Os testes continuam funcionando sem Docker (`npm test` em cada pasta), como descrito no [README](../README.md#-testes-e-ci).
 
@@ -221,7 +221,7 @@ Rode `./naval setup` e preencha as variáveis indicadas.
 Outro processo, ou o `npm run dev` fora do Docker, está usando a porta. Pare esse processo ou use outra porta, por exemplo `NAVAL_WEB_PORT=5174 ./naval dev`.
 
 **O app abre, mas o login falha ou dá erro de rede**
-Confira `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` no `frontend/.env`. Em produção, rode `./naval prod` de novo depois de mudar esse arquivo: as variáveis `VITE_*` são embutidas no momento do build.
+Confira `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` no `apps/frontend/.env`. Em produção, rode `./naval prod` de novo depois de mudar esse arquivo: as variáveis `VITE_*` são embutidas no momento do build.
 
 **As chamadas da API respondem 403 (`CORS_ORIGIN_NOT_ALLOWED`)**
 O endereço na barra do navegador não bate com a origem permitida. Em produção, ajuste `NAVAL_PUBLIC_ORIGIN`. Em dev, acesse pelo `localhost` na porta do `NAVAL_WEB_PORT`.
@@ -233,7 +233,7 @@ A API sobe, mas o Supabase precisa ter as migrations aplicadas. Veja [Banco de d
 Rode `./naval dev` de novo. Ele refaz a imagem e recria o `node_modules` do container.
 
 **Erro de permissão ao gerar arquivos (Linux)**
-Os containers usam o UID 1000. Se `id -u` mostra outro número, rode o build do frontend fora do Docker (`cd frontend && npm run build`) ou ajuste as permissões da pasta `frontend/dist`.
+Os containers usam o UID 1000. Se `id -u` mostra outro número, rode o build do frontend fora do Docker (`cd apps/frontend && npm run build`) ou ajuste as permissões da pasta `apps/frontend/dist`.
 
 **Começar do zero**
 `./naval clean` remove os containers, volumes e imagens do NAVAL. Depois é só rodar `./naval dev` de novo.

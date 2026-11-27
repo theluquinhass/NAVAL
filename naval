@@ -40,14 +40,14 @@ check_env_file() {
 
 check_env() {
     local ok=0
-    check_env_file backend/.env SUPABASE_URL SUPABASE_PUBLISHABLE_KEY || ok=1
-    check_env_file frontend/.env VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY || ok=1
+    check_env_file apps/backend/.env SUPABASE_URL SUPABASE_PUBLISHABLE_KEY || ok=1
+    check_env_file apps/frontend/.env VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY || ok=1
     ((ok == 0)) || fail "Configuração incompleta. Veja docs/docker.md (seção Configuração)."
 }
 
 cmd_setup() {
     require_docker
-    for dir in backend frontend; do
+    for dir in apps/backend apps/frontend; do
         if [[ -f "$dir/.env" ]]; then
             info "$dir/.env já existe (mantido)."
         else
@@ -55,8 +55,8 @@ cmd_setup() {
             info "Criado $dir/.env a partir de $dir/.env.example."
         fi
     done
-    if check_env_file backend/.env SUPABASE_URL SUPABASE_PUBLISHABLE_KEY \
-        && check_env_file frontend/.env VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; then
+    if check_env_file apps/backend/.env SUPABASE_URL SUPABASE_PUBLISHABLE_KEY \
+        && check_env_file apps/frontend/.env VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; then
         bold "Tudo pronto. Rode: ./naval dev"
     else
         bold "Preencha as variáveis acima com os dados do seu projeto Supabase e rode: ./naval dev"
@@ -158,7 +158,7 @@ cmd_test() {
 cmd_rls() {
     require_docker
     bold "Testes de RLS (PostgreSQL descartável, nunca toca no Supabase remoto)"
-    "$ROOT/backend/supabase/run_rls_tests.sh"
+    "$ROOT/supabase/run_rls_tests.sh"
 }
 
 cmd_clean() {
@@ -175,7 +175,7 @@ cmd_help() {
     cat <<'EOF'
 NAVAL — comandos com Docker Compose
 
-  ./naval setup                Cria backend/.env e frontend/.env a partir dos exemplos e confere o que falta
+  ./naval setup                Cria apps/backend/.env e apps/frontend/.env a partir dos exemplos e confere o que falta
   ./naval dev [-d]             Sobe o ambiente de desenvolvimento (app :5173, API :3000) com hot reload
   ./naval prod                 Sobe o build de produção localmente (nginx em :8080)
   ./naval stop [dev|prod|all]  Para e remove os containers (padrão: dev)

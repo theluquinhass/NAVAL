@@ -7,7 +7,6 @@ coverage
 test
 postman
 .postman
-supabase
 .git
 .gitignore
 *.log

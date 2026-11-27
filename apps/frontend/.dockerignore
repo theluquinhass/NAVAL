@@ -1,4 +1,4 @@
-# frontend/.env continua no contexto de propósito: o build do Vite lê dele as variáveis
+# apps/frontend/.env continua no contexto de propósito: o build do Vite lê dele as variáveis
 # VITE_* (públicas). Ele não chega na imagem final, que só contém o dist/ e o nginx.
 .env.*
 !.env.example

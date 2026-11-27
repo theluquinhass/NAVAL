@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import Header from '../components/layout/Header.jsx'
-import Sidebar from '../components/layout/Sidebar.jsx'
+import Header from './Header.jsx'
+import Sidebar from './Sidebar.jsx'
 import './DashboardLayout.css'
 
 const MOBILE_QUERY = '(max-width: 48rem)'

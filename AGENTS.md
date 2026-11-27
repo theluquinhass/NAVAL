@@ -4,43 +4,43 @@ Este arquivo orienta agentes de código (Claude Code, Codex, Cursor etc.) que tr
 
 ## 1. Visão geral
 
-NAVAL é um SaaS multi-tenant para barbearias (agenda, agendamento público, clientes, serviços, horários, financeiro, produtos/estoque/vendas). É um monorepo **sem `package.json` na raiz**: `backend/` (API Express) e `frontend/` (SPA React) são projetos npm independentes. Toda a interface, mensagens de erro e documentação estão em **português (pt-BR)**.
+NAVAL é um SaaS multi-tenant para barbearias (agenda, agendamento público, clientes, serviços, horários, financeiro, produtos/estoque/vendas). É um monorepo **sem `package.json` na raiz**: `apps/backend/` (API Express) e `apps/frontend/` (SPA React) são projetos npm independentes. Toda a interface, mensagens de erro e documentação estão em **português (pt-BR)**.
 
 ```
 Navegador ──/api──▶ Vite dev (:5173) ou nginx (:8080, prod) ──▶ Express (:3000) ──▶ Supabase (Postgres + RLS)
     └──────────────── Supabase Auth (login/sessão direto do navegador) ─────────────────┘
 ```
 
-- O navegador autentica direto no Supabase Auth (`frontend/src/lib/supabase.js`) e envia o JWT ao backend.
+- O navegador autentica direto no Supabase Auth (`apps/frontend/src/lib/supabase.js`) e envia o JWT ao backend.
 - O backend valida o token (`middlewares/authMiddleware.js`) e cria **um cliente Supabase por requisição com o JWT do usuário** (`createUserClient` em `src/config/supabase.js`), de modo que o RLS do Postgres isola os tenants. Rotas públicas usam `createPublicClient` (papel `anon`).
 
 ## 2. Mapa do repositório
 
 | Caminho | Conteúdo |
 |---|---|
-| `backend/src/app.js` | Montagem do Express: CORS, `GET /health` (público), routers, 404 e handler de erros |
-| `backend/src/server.js` | Sobe o servidor (`PORT`, padrão 3000) |
-| `backend/src/routes/` | Definição de rotas (`publicBookingRoutes.js` é a única sem auth) |
-| `backend/src/controllers/` | Valida entrada, chama serviços e traduz erros para HTTP |
-| `backend/src/services/` | Acesso ao Supabase e regras de negócio (`money.js`, `workingHoursRules.js`) |
-| `backend/src/validation/` | Validação de payloads; utilitários em `shared.js` (`isUuid`, `validateMoney`, datas ISO estritas) |
-| `backend/src/middlewares/` | `authMiddleware`, `authCache`, `requireSellsProducts`, `timing` (Server-Timing) |
-| `backend/test/*.test.js` | Testes `node:test` |
-| `backend/supabase/migrations/` | Migrations SQL versionadas (`AAAAMMDDNNNN_nome.sql`) |
-| `backend/supabase/run_rls_tests.sh` | Suíte de RLS em Postgres descartável via Docker (nunca toca no remoto) |
-| `backend/supabase/verify_migrations.sql` | Conferência **somente leitura** do schema aplicado |
-| `frontend/src/services/` | `api.js` (axios + interceptors) e um módulo `*Api.js` por domínio |
-| `frontend/src/pages/` | Páginas; `Dashboard/<Feature>/index.jsx` + componentes irmãos (ex.: `Finance/PaymentForm.jsx`, `Agenda/AppointmentDialog.jsx`, `WorkingHours/*`) |
-| `frontend/src/utils/dashboard.js` | Fuso, datas, dinheiro, `getErrorMessage`, `newIdempotencyKey` |
-| `frontend/src/hooks/` | `useAuth`, `useProfile`, `useLatestRequest` |
-| `frontend/src/routes/` | Guards de rota (`ProtectedRoute`, `GuestRoute`, `SetupRoute`, `ProfileRoute`, `ProductsRoute`) |
-| `frontend/src/styles/` | CSS próprio (`tokens.css`, `global.css`); cada página tem seu `.css` |
+| `apps/backend/src/app.js` | Montagem do Express: CORS, `GET /health` (público), routers, 404 e handler de erros |
+| `apps/backend/src/server.js` | Sobe o servidor (`PORT`, padrão 3000) |
+| `apps/backend/src/routes/` | Definição de rotas (`publicBookingRoutes.js` é a única sem auth) |
+| `apps/backend/src/controllers/` | Valida entrada, chama serviços e traduz erros para HTTP |
+| `apps/backend/src/services/` | Acesso ao Supabase e regras de negócio (`money.js`, `workingHoursRules.js`) |
+| `apps/backend/src/validation/` | Validação de payloads; utilitários em `shared.js` (`isUuid`, `validateMoney`, datas ISO estritas) |
+| `apps/backend/src/middlewares/` | `authMiddleware`, `authCache`, `requireSellsProducts`, `timing` (Server-Timing) |
+| `apps/backend/test/*.test.js` | Testes `node:test` |
+| `supabase/migrations/` | Migrations SQL versionadas (`AAAAMMDDNNNN_nome.sql`) |
+| `supabase/run_rls_tests.sh` | Suíte de RLS em Postgres descartável via Docker (nunca toca no remoto) |
+| `supabase/verify_migrations.sql` | Conferência **somente leitura** do schema aplicado |
+| `apps/frontend/src/services/` | `api.js` (axios + interceptors) e um módulo `*Api.js` por domínio |
+| `apps/frontend/src/pages/` | Páginas; `Dashboard/<Feature>/index.jsx` + componentes irmãos (ex.: `Finance/PaymentForm.jsx`, `Agenda/AppointmentDialog.jsx`, `WorkingHours/*`) |
+| `apps/frontend/src/utils/dashboard.js` | Fuso, datas, dinheiro, `getErrorMessage`, `newIdempotencyKey` |
+| `apps/frontend/src/hooks/` | `useAuth`, `useProfile`, `useLatestRequest` |
+| `apps/frontend/src/routes/` | Guards de rota (`ProtectedRoute`, `GuestRoute`, `SetupRoute`, `ProfileRoute`, `ProductsRoute`) |
+| `apps/frontend/src/styles/` | CSS próprio (`tokens.css`, `global.css`); cada página tem seu `.css` |
 | `naval`, `compose.yaml`, `compose.prod.yaml` | Script e Compose de dev/produção local |
 | `.github/workflows/ci.yml` | CI (Node 22) |
 
 ## 3. Setup e execução
 
-Arquivos de ambiente: copie `backend/.env.example` → `backend/.env` e `frontend/.env.example` → `frontend/.env` e preencha `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` e `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` (chave publicável/anon). **Nunca leia, imprima ou commite os `.env` reais.**
+Arquivos de ambiente: copie `apps/backend/.env.example` → `apps/backend/.env` e `apps/frontend/.env.example` → `apps/frontend/.env` e preencha `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` e `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` (chave publicável/anon). **Nunca leia, imprima ou commite os `.env` reais.**
 
 **Com Docker** (script `./naval`, detalhes em `docs/docker.md`):
 
@@ -57,8 +57,8 @@ Arquivos de ambiente: copie `backend/.env.example` → `backend/.env` e `fronten
 **Sem Docker** (Node ≥ 22):
 
 ```bash
-cd backend && npm install && npm run dev    # API em http://localhost:3000
-cd frontend && npm install && npm run dev   # App em http://localhost:5173 (/api → :3000)
+cd apps/backend && npm install && npm run dev    # API em http://localhost:3000
+cd apps/frontend && npm install && npm run dev   # App em http://localhost:5173 (/api → :3000)
 ```
 
 ## 4. Checklist de verificação antes de concluir
@@ -66,9 +66,9 @@ cd frontend && npm install && npm run dev   # App em http://localhost:5173 (/api
 Rode o que corresponde ao que você mudou (são os mesmos comandos do CI):
 
 ```bash
-cd backend && npm test                                       # node --experimental-test-module-mocks --test
-cd frontend && npm run lint && npm run test && npm run build # ESLint, Vitest, build Vite
-backend/supabase/run_rls_tests.sh                            # ao mexer em migrations, policies, RPCs ou triggers (requer Docker)
+cd apps/backend && npm test                                       # node --experimental-test-module-mocks --test
+cd apps/frontend && npm run lint && npm run test && npm run build # ESLint, Vitest, build Vite
+supabase/run_rls_tests.sh                            # ao mexer em migrations, policies, RPCs ou triggers (requer Docker)
 ```
 
 - Resultado esperado do RLS: `TODOS OS TESTES DE RLS PASSARAM`.
@@ -105,7 +105,7 @@ backend/supabase/run_rls_tests.sh                            # ao mexer em migra
 
 ## 6. Convenções de testes
 
-- **Backend**: `backend/test/<nome>.test.js`, `node:test` + `node:assert/strict`. Mocke dependências com `mock.module('../src/...', { namedExports: {...} })` **antes** de importar o módulo testado via `await import(...)`, e `after(() => mock.restoreAll())`. Controllers são testados com objetos `req`/`res` falsos.
+- **Backend**: `apps/backend/test/<nome>.test.js`, `node:test` + `node:assert/strict`. Mocke dependências com `mock.module('../src/...', { namedExports: {...} })` **antes** de importar o módulo testado via `await import(...)`, e `after(() => mock.restoreAll())`. Controllers são testados com objetos `req`/`res` falsos.
 - **Frontend**: testes ao lado do código (`*.test.js`/`*.test.jsx`), Vitest + jsdom (`globals: true`). Padrão: `vi.mock('../../../services/xApi.js', () => ({ fn: vi.fn() }))` seguido de `await import(...)` do mock e do componente. Use `@testing-library/react` (`render`, `screen`, `fireEvent`, `act`) — alguns testes antigos usam `createRoot` direto.
 - **Datas**: testes não podem depender do fuso da máquina. Use instantes UTC absolutos (`'2026-11-25T13:00:00.000Z'`) e funções de Fortaleza. Para datas que passam por validação de período (`MAX_PAST_YEARS`, `MAX_FUTURE_DAYS`), gere-as **relativas a agora** em vez de datas fixas no passado, ou use `vi.useFakeTimers()`/`vi.setSystemTime`.
 - Teste comportamento observável (status, corpo `{ error, code }`, texto na tela), inclusive caminhos de erro e respostas fora de ordem.
@@ -115,9 +115,9 @@ backend/supabase/run_rls_tests.sh                            # ao mexer em migra
 
 - **Multi-tenant via RLS**: isolamento por `barbershop_id` + policies. Toda tabela nova precisa de RLS habilitado, policies por tenant e casos na suíte `rls_tests.sql`.
 - **Nunca** use `service_role` nem chaves administrativas, nem as adicione ao código ou `.env.example`.
-- **Nunca** aplique migrations em um projeto Supabase remoto (`supabase db push`, SQL Editor etc.). Crie a migration em `backend/supabase/migrations/` com o próximo prefixo e valide localmente com `run_rls_tests.sh`; a aplicação remota é decisão humana. `verify_migrations.sql` é somente leitura.
+- **Nunca** aplique migrations em um projeto Supabase remoto (`supabase db push`, SQL Editor etc.). Crie a migration em `supabase/migrations/` com o próximo prefixo e valide localmente com `run_rls_tests.sh`; a aplicação remota é decisão humana. `verify_migrations.sql` é somente leitura.
 - Migrations já existentes não devem ser editadas; corrija com uma nova migration.
-- **Nunca** leia, imprima ou commite `backend/.env` / `frontend/.env` (o `.gitignore` já os exclui; só `.env.example` é versionado).
+- **Nunca** leia, imprima ou commite `apps/backend/.env` / `apps/frontend/.env` (o `.gitignore` já os exclui; só `.env.example` é versionado).
 - Variáveis `VITE_*` são embutidas no bundle e **públicas**: só URL e chave publicável, jamais segredos.
 - Autorização é garantida no backend (`authMiddleware` + RLS); guards de rota no frontend são só UX. Valide toda entrada no backend, mesmo que o frontend já valide.
 - Não vaze detalhes internos em respostas de erro (o handler global responde `INTERNAL_ERROR`). `CORS_ORIGIN` é obrigatório em produção.

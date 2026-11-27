@@ -9,10 +9,10 @@ name: naval-prod
 services:
   api:
     build:
-      context: ./backend
+      context: ./apps/backend
       target: prod
     env_file:
-      - path: ./backend/.env
+      - path: ./apps/backend/.env
         required: true
     environment:
       NODE_ENV: production
@@ -30,7 +30,7 @@ services:
 
   web:
     build:
-      context: ./frontend
+      context: ./apps/frontend
       target: prod
     ports:
       - "${NAVAL_HTTP_PORT:-8080}:8080"
