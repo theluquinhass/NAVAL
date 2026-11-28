@@ -105,7 +105,10 @@ export async function postPrivateAppointmentController(req, res) {
 }
 
 export async function getPublicAvailabilityController(req, res) {
-    const { date, serviceId } = req.query
+    const { date } = req.query
+    // An empty serviceId (e.g. an unselected <select>) means "no service yet":
+    // the catalog must still load so the customer can pick one.
+    const serviceId = req.query.serviceId === '' ? undefined : req.query.serviceId
     if (!isStrictCalendarDate(date)) {
         return validationError(res, 'Informe uma data válida.')
     }

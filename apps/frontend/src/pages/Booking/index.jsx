@@ -35,7 +35,8 @@ export default function Booking() {
     const [startsAt, setStartsAt] = useState('')
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
-    const [loading, setLoading] = useState(false)
+    // The first availability request (which also loads the catalog) starts on mount.
+    const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
     const [confirmation, setConfirmation] = useState(null)

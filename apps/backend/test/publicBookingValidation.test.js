@@ -2,6 +2,7 @@ import { after, mock, test } from 'node:test'
 import assert from 'node:assert/strict'
 
 const publicCalls = []
+const availabilityCalls = []
 let getUserCalls = 0
 
 mock.module('../src/config/supabase.js', {
@@ -26,7 +27,10 @@ mock.module('../src/services/schedulingService.js', {
             publicCalls.push({ slug, payload })
             return { id: 'appointment-1' }
         },
-        getPublicBookingData: async () => ({ services: [] }),
+        getPublicBookingData: async (slug, date, serviceId) => {
+            availabilityCalls.push({ slug, date, serviceId })
+            return { services: [{ id: 'service-1' }], slots: [] }
+        },
         getWorkingHours: async () => [],
         listAppointments: async () => [],
         saveWorkingHours: async () => []
@@ -65,6 +69,23 @@ test('public availability rejects impossible calendar dates and invalid service 
         )
         assert.equal(res.statusCode, 400)
         assert.equal(res.body.code, 'VALIDATION_ERROR')
+    }
+})
+
+test('public availability treats a missing or empty serviceId as absent and still returns the catalog', async () => {
+    const { getPublicAvailabilityController } = await import('../src/controllers/schedulingController.js')
+
+    for (const query of [
+        { date: '2026-11-25' },
+        { date: '2026-11-25', serviceId: '' }
+    ]) {
+        availabilityCalls.length = 0
+        const res = response()
+        await getPublicAvailabilityController({ params: { slug: 'naval' }, query }, res)
+
+        assert.equal(res.statusCode, 200)
+        assert.deepEqual(res.body.services, [{ id: 'service-1' }])
+        assert.deepEqual(availabilityCalls, [{ slug: 'naval', date: '2026-11-25', serviceId: undefined }])
     }
 })
 

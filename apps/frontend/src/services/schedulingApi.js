@@ -17,7 +17,9 @@ export async function createPrivateAppointment(payload) {
 }
 
 export async function getPublicAvailability(slug, date, serviceId) {
-    return (await api.get(`/booking/${encodeURIComponent(slug)}/availability`, { params: { date, serviceId }, skipAuth: true })).data
+    // Without a selected service the endpoint still returns the catalog; never send an empty id.
+    const params = serviceId ? { date, serviceId } : { date }
+    return (await api.get(`/booking/${encodeURIComponent(slug)}/availability`, { params, skipAuth: true })).data
 }
 
 export async function createAppointment(slug, payload) {
