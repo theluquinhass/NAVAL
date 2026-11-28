@@ -244,7 +244,7 @@ export default function Booking() {
                                     value={customerPhone}
                                     onChange={(event) => setCustomerPhone(event.target.value)}
                                     autoComplete="tel"
-                                    placeholder="(85) 99999-1234"
+                                    placeholder="(84) 99999-1234"
                                     required
                                 />
                             </div>

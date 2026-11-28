@@ -9,6 +9,7 @@ import {
 } from '../../../services/productsApi.js'
 import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
 import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
+import { useConfirm } from '../../../components/ui/feedbackContext.js'
 import '../management.css'
 import './products.css'
 
@@ -122,6 +123,7 @@ export default function Products() {
     const [editingProduct, setEditingProduct] = useState(null)
     const [busyId, setBusyId] = useState('')
     const beginProductsRequest = useLatestRequest()
+    const confirm = useConfirm()
 
     const loadProducts = useCallback(async () => {
         const isCurrent = beginProductsRequest()
@@ -175,7 +177,13 @@ export default function Products() {
     }
 
     async function remove(product) {
-        if (!window.confirm(`Excluir "${product.name}"? Produtos com histórico não podem ser excluídos.`)) return
+        const accepted = await confirm({
+            title: `Excluir "${product.name}"?`,
+            message: 'Produtos com histórico de movimentações ou vendas não podem ser excluídos; nesse caso, desative o produto.',
+            confirmLabel: 'Excluir produto',
+            tone: 'danger'
+        })
+        if (!accepted) return
         setBusyId(product.id)
         setError('')
         try {

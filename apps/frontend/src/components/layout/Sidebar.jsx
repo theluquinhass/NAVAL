@@ -1,47 +1,36 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useProfile } from '../../hooks/useProfile.js'
+import Icon from '../ui/Icon.jsx'
 
-const icons = {
-    dashboard: <><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="11" width="7" height="10" rx="1.5" /><rect x="3" y="14" width="8" height="7" rx="1.5" /></>,
-    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
-    users: <><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
-    services: <><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="m8.1 8.1 12 12M14 14l6-6M8.1 15.9 12 12" /></>,
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
-    finance: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18m-13 5h3" /></>,
-    products: <><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></>,
-    movements: <><path d="M4 7h13m0 0-3-3m3 3-3 3" /><path d="M20 17H7m0 0 3-3m-3 3 3 3" /></>,
-    business: <><rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V4h8v3M3 12h18m-11 0v2h4v-2" /></>,
-    settings: <><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /><path d="m19.4 15 .1.1 1.2 1-1.2 2.1-1.5-.5a8 8 0 0 1-1.7 1l-.3 1.6h-2.4l-.3-1.6a8 8 0 0 1-1.7-1l-1.5.5-1.2-2.1 1.2-1a8 8 0 0 1 0-2l-1.2-1 1.2-2.1 1.5.5a8 8 0 0 1 1.7-1l.3-1.6H16l.3 1.6a8 8 0 0 1 1.7 1l1.5-.5 1.2 2.1-1.2 1a8 8 0 0 1-.1 1.9Z" transform="translate(-2 -2)" /></>
-}
+const SETTINGS_PATHS = ['/dashboard/settings', '/dashboard/business']
 
 const groups = [
-    { title: 'Principal', items: [{ label: 'Dashboard', icon: 'dashboard', to: '/dashboard' }] },
-    { title: 'Gestão', items: [
+    { title: null, items: [{ label: 'Início', icon: 'dashboard', to: '/dashboard' }] },
+    { title: 'Atendimento', items: [
         { label: 'Agenda', icon: 'calendar', to: '/dashboard/agenda' },
-        { label: 'Clientes', icon: 'users', to: '/dashboard/customers' },
-        { label: 'Serviços', icon: 'services', to: '/dashboard/services' },
+        { label: 'Clientes', icon: 'users', to: '/dashboard/customers' }
+    ] },
+    { title: 'Barbearia', items: [
+        { label: 'Serviços', icon: 'scissors', to: '/dashboard/services' },
         { label: 'Horários', icon: 'clock', to: '/dashboard/working-hours' },
-        { label: 'Financeiro', icon: 'finance', to: '/dashboard/finance' }
+        { label: 'Financeiro', icon: 'wallet', to: '/dashboard/finance' }
     ] },
-    { title: 'Produtos', items: [
-        { label: 'Estoque', icon: 'products', to: '/dashboard/products' },
-        { label: 'Movimentações', icon: 'movements', to: '/dashboard/products/movements' },
-        { label: 'Financeiro', icon: 'finance', to: '/dashboard/products/finance' }
-    ] },
-    { title: 'Sistema', items: [
-        { label: 'Meu negócio', icon: 'business', to: '/dashboard/business' },
-        { label: 'Configurações', icon: 'settings', to: '/dashboard/settings' }
+    { title: 'Produtos', requiresProducts: true, items: [
+        { label: 'Estoque', icon: 'box', to: '/dashboard/products' },
+        { label: 'Movimentações', icon: 'swap', to: '/dashboard/products/movements' },
+        { label: 'Vendas e compras', icon: 'receipt', to: '/dashboard/products/finance' }
     ] }
 ]
 
-function Icon({ name }) {
-    return <svg className="dashboard-sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>
+function linkClass(isActive) {
+    return `dashboard-sidebar__link${isActive ? ' dashboard-sidebar__link--active' : ''}`
 }
 
 export default function Sidebar({ isMobile, isOpen, onClose, sidebarRef, firstLinkRef }) {
     const profile = useProfile()
-    const visibleGroups = groups.filter((group) => group.title !== 'Produtos' || profile?.sellsProducts)
-    const firstNavItem = visibleGroups.flatMap((group) => group.items).find((item) => item.to)
+    const { pathname } = useLocation()
+    const visibleGroups = groups.filter((group) => !group.requiresProducts || profile?.sellsProducts)
+    const settingsActive = SETTINGS_PATHS.includes(pathname)
 
     return (
         <aside
@@ -54,35 +43,61 @@ export default function Sidebar({ isMobile, isOpen, onClose, sidebarRef, firstLi
             tabIndex={-1}
         >
             <div className="dashboard-sidebar__heading">
-                <span className="dashboard-sidebar__brand">NAVAL</span>
-                <button type="button" className="dashboard-sidebar__close" aria-label="Fechar navegação" onClick={onClose}>Fechar</button>
+                <span className="dashboard-sidebar__brand">
+                    <span className="dashboard-sidebar__mark" aria-hidden="true">N</span>
+                    <span className="dashboard-sidebar__brand-text">
+                        <strong>NAVAL</strong>
+                        {profile?.name && <small>{profile.name}</small>}
+                    </span>
+                </span>
+                <button type="button" className="dashboard-sidebar__close" aria-label="Fechar navegação" onClick={onClose}>
+                    <Icon name="close" />
+                </button>
             </div>
 
             <nav className="dashboard-sidebar__nav" aria-label="Navegação principal">
-                {visibleGroups.map((group) => (
-                    <section className="dashboard-sidebar__group" key={group.title} aria-label={group.title}>
-                        <h2 className="dashboard-sidebar__group-title">{group.title}</h2>
+                {visibleGroups.map((group, groupIndex) => (
+                    <section className="dashboard-sidebar__group" key={group.title ?? 'main'} aria-label={group.title ?? 'Principal'}>
+                        {group.title && <h2 className="dashboard-sidebar__group-title">{group.title}</h2>}
                         <div className="dashboard-sidebar__group-items">
-                            {group.items.map((item) => item.to ? (
+                            {group.items.map((item, itemIndex) => (
                                 <NavLink
-                                    key={item.label}
-                                    ref={item === firstNavItem ? firstLinkRef : undefined}
+                                    key={item.to}
+                                    ref={groupIndex === 0 && itemIndex === 0 ? firstLinkRef : undefined}
                                     to={item.to}
                                     end
-                                    className={({ isActive }) => `dashboard-sidebar__link${isActive ? ' dashboard-sidebar__link--active' : ''}`}
+                                    className={({ isActive }) => linkClass(isActive)}
                                     onClick={onClose}
                                 >
-                                    <Icon name={item.icon} /><span>{item.label}</span>
+                                    <Icon name={item.icon} className="dashboard-sidebar__icon" /><span>{item.label}</span>
                                 </NavLink>
-                            ) : (
-                                <div className="dashboard-sidebar__link dashboard-sidebar__link--soon" key={item.label} aria-disabled="true">
-                                    <Icon name={item.icon} /><span className="dashboard-sidebar__item-label">{item.label}</span><span className="dashboard-sidebar__coming-soon">Em breve</span>
-                                </div>
                             ))}
                         </div>
                     </section>
                 ))}
             </nav>
+
+            <div className="dashboard-sidebar__footer">
+                {profile?.slug && (
+                    <a
+                        className="dashboard-sidebar__link"
+                        href={`/book/${encodeURIComponent(profile.slug)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Icon name="external" className="dashboard-sidebar__icon" />
+                        <span>Minha página de agendamento</span>
+                    </a>
+                )}
+                <NavLink
+                    to="/dashboard/settings"
+                    className={() => linkClass(settingsActive)}
+                    aria-current={settingsActive ? 'page' : undefined}
+                    onClick={onClose}
+                >
+                    <Icon name="settings" className="dashboard-sidebar__icon" /><span>Configurações</span>
+                </NavLink>
+            </div>
         </aside>
     )
 }

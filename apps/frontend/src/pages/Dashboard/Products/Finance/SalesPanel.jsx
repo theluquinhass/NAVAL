@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { refundSale } from '../../../../services/productsApi.js'
+import { useConfirm } from '../../../../components/ui/feedbackContext.js'
 import {
     fortalezaInputValue,
     formatDateTime,
@@ -10,17 +11,23 @@ import {
 
 export default function SalesPanel({ sales, payments, refunds, onFinancialRefund, onChanged, notify }) {
     const [busyId, setBusyId] = useState('')
+    const confirm = useConfirm()
 
     async function returnWithStock(sale) {
-        const reason = window.prompt('Motivo da devolução com estorno:', 'Devolução do cliente')
-        if (reason === null || !reason.trim()) return
-        if (!window.confirm('Estornar esta venda e devolver os itens ao estoque?')) return
+        const reason = await confirm({
+            title: 'Devolver venda ao estoque?',
+            message: 'O valor da venda é estornado e os itens voltam para o estoque.',
+            input: { label: 'Motivo da devolução', defaultValue: 'Devolução do cliente' },
+            confirmLabel: 'Estornar e devolver',
+            tone: 'danger'
+        })
+        if (!reason) return
 
         setBusyId(sale.id)
         try {
             await refundSale(sale.id, {
                 refundedAt: toFortalezaIso(fortalezaInputValue()),
-                reason: reason.trim()
+                reason
             })
             notify('Venda estornada e itens devolvidos ao estoque.')
             onChanged()

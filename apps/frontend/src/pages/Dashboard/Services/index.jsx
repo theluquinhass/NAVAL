@@ -7,6 +7,7 @@ import {
 } from '../../../services/servicesApi.js'
 import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
 import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
+import { useConfirm } from '../../../components/ui/feedbackContext.js'
 import '../management.css'
 import './services.css'
 
@@ -22,6 +23,7 @@ export default function Services() {
     const [editingId, setEditingId] = useState(null)
     const [form, setForm] = useState(emptyForm)
     const beginServicesRequest = useLatestRequest()
+    const confirm = useConfirm()
 
     const loadServices = useCallback(async () => {
         const isCurrent = beginServicesRequest()
@@ -106,7 +108,13 @@ export default function Services() {
     }
 
     async function handleDelete(service) {
-        if (!window.confirm(`Deseja excluir o serviço "${service.name}"?`)) return
+        const accepted = await confirm({
+            title: `Excluir "${service.name}"?`,
+            message: 'O serviço deixa de aparecer na sua página de agendamento. Agendamentos já feitos não são apagados.',
+            confirmLabel: 'Excluir serviço',
+            tone: 'danger'
+        })
+        if (!accepted) return
 
         setMessage('')
         setFormError('')

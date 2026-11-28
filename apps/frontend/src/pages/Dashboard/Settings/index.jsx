@@ -7,21 +7,24 @@ import '../management.css'
 import './settings.css'
 
 const TABS = [
-    { id: 'business', label: 'Meu negócio', path: '/dashboard/business' },
-    { id: 'account', label: 'Conta e segurança', path: '/dashboard/settings' },
+    { id: 'business', label: 'Meu negócio', path: '/dashboard/settings' },
+    { id: 'account', label: 'Conta e segurança', path: '/dashboard/settings?tab=account' },
     { id: 'preferences', label: 'Preferências', path: '/dashboard/settings?tab=preferences' }
 ]
+
+function activeTabFrom(location) {
+    // /dashboard/business is kept as an alias of the "Meu negócio" tab.
+    if (location.pathname === '/dashboard/business') return 'business'
+    const requested = new URLSearchParams(location.search).get('tab')
+    return TABS.some((tab) => tab.id === requested) ? requested : 'business'
+}
 
 export default function Settings() {
     const location = useLocation()
     const navigate = useNavigate()
     const tabRefs = useRef({})
 
-    const activeTab = location.pathname === '/dashboard/business'
-        ? 'business'
-        : new URLSearchParams(location.search).get('tab') === 'preferences'
-            ? 'preferences'
-            : 'account'
+    const activeTab = activeTabFrom(location)
 
     function selectTab(tabId) {
         navigate(TABS.find((tab) => tab.id === tabId)?.path || '/dashboard/settings', { replace: true })

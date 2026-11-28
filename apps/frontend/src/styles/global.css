@@ -1,10 +1,18 @@
 @import './tokens.css';
+@import './ui.css';
 @font-face {
   font-family: 'Inter';
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
   src: url('/fonts/InterVariable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/FrauncesVariable.woff2') format('woff2');
 }
 
 *,
@@ -38,6 +46,18 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+h1 {
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.02em;
+  font-optical-sizing: auto;
+}
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-foreground);
 }
 
 button,

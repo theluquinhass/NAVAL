@@ -88,7 +88,7 @@ export default function Setup() {
                             value={phone}
                             onChange={(event) => { setPhone(event.target.value); setError('') }}
                             autoComplete="tel"
-                            placeholder="(85) 99999-1234"
+                            placeholder="(84) 99999-1234"
                             required
                         />
                     </div>
