@@ -82,8 +82,8 @@ export default function ProductsFinance() {
             <header className="dashboard-management__header finance-page__header">
                 <div>
                     <p className="dashboard-eyebrow">Produtos</p>
-                    <h1>Financeiro de produtos</h1>
-                    <p>Vendas, estornos e compras de estoque. Pagamentos de venda continuam contando na receita geral sem criar outra fonte de receita.</p>
+                    <h1>Vendas e compras</h1>
+                    <p>Registre vendas de produtos, devoluções e compras de estoque. O dinheiro das vendas também entra no resumo do Financeiro.</p>
                 </div>
             </header>
 

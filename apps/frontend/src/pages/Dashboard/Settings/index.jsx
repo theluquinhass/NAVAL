@@ -49,8 +49,9 @@ export default function Settings() {
     return (
         <main className="dashboard-management settings-page">
             <header className="dashboard-management__header">
+                <p className="dashboard-eyebrow">Sistema</p>
                 <h1>Configurações</h1>
-                <p>Gerencie os dados da barbearia, sua conta e as preferências do painel.</p>
+                <p>Dados da barbearia, seu link de agendamento, sua conta e as preferências do painel.</p>
             </header>
 
             <div className="settings__tabs" role="tablist" aria-label="Seções de configuração">

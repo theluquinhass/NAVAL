@@ -4,6 +4,7 @@ import { updateProfile } from '../../../services/profileApi.js'
 import { getErrorMessage } from '../../../utils/dashboard.js'
 import { normalizeSlug } from '../../../utils/slug.js'
 import Feedback from './SettingsFeedback.jsx'
+import ShareBookingLink from '../../../components/ShareBookingLink.jsx'
 
 function profileToForm(profile) {
     return {
@@ -22,14 +23,12 @@ export default function BusinessPanel({ activeTab }) {
     const [form, setForm] = useState(() => profileToForm(profile))
     const [saving, setSaving] = useState(false)
     const [feedback, setFeedback] = useState(null)
-    const [copyFeedback, setCopyFeedback] = useState('')
 
     const slug = normalizeSlug(form.slug)
     const publicUrl = `${window.location.origin}/book/${slug}`
 
     function updateField(field, value) {
         setFeedback(null)
-        setCopyFeedback('')
         setForm((current) => {
             if (field === 'name' && normalizeSlug(current.slug) === normalizeSlug(current.name)) {
                 return { ...current, name: value, slug: normalizeSlug(value) }
@@ -41,7 +40,6 @@ export default function BusinessPanel({ activeTab }) {
     async function handleSubmit(event) {
         event.preventDefault()
         setFeedback(null)
-        setCopyFeedback('')
 
         if (!slug) {
             setFeedback({ type: 'error', text: 'Informe um endereço de perfil válido.' })
@@ -75,20 +73,12 @@ export default function BusinessPanel({ activeTab }) {
         }
     }
 
-    async function handleCopy() {
-        if (!slug) return
-        try {
-            if (!navigator.clipboard?.writeText) throw new Error('Área de transferência indisponível')
-            await navigator.clipboard.writeText(publicUrl)
-            setCopyFeedback('Link copiado.')
-        } catch {
-            setCopyFeedback('Não foi possível copiar. Selecione o link e copie manualmente.')
-        }
-    }
 
     return (
         <section className="dashboard-management__panel settings__panel" role="tabpanel" id="settings-panel-business" aria-labelledby="settings-tab-business" hidden={activeTab !== 'business'}>
-            <div className="dashboard-management__panel-heading">
+            <ShareBookingLink slug={profile?.slug} barbershopName={profile?.name} />
+
+            <div className="dashboard-management__panel-heading settings__business-heading">
                 <h2>Dados do negócio</h2>
                 <p>Essas informações aparecem na sua página pública de agendamentos.</p>
             </div>
@@ -136,16 +126,21 @@ export default function BusinessPanel({ activeTab }) {
                 </label>
 
                 <label htmlFor="business-slug">
-                    Endereço do perfil
+                    Endereço da sua página
                     <input
                         id="business-slug"
                         type="text"
                         value={form.slug}
                         maxLength={80}
+                        aria-describedby="business-slug-preview"
+                        autoCapitalize="none"
                         required
                         onChange={(event) => updateField('slug', event.target.value)}
                         onBlur={() => setForm((current) => ({ ...current, slug: normalizeSlug(current.slug) }))}
                     />
+                    <small id="business-slug-preview" className="settings__slug-preview">
+                        {slug ? <>Seu link: <code>{publicUrl}</code>{slug !== profile?.slug && ' (salve para aplicar)'}</> : 'Preencha o endereço para gerar o link.'}
+                    </small>
                 </label>
 
                 <label className="settings__choice" htmlFor="business-sells-products">
@@ -160,20 +155,6 @@ export default function BusinessPanel({ activeTab }) {
                         <small>Exibe estoque, movimentações e financeiro de produtos no menu. Ao desativar, os atalhos desaparecem, mas o histórico é preservado.</small>
                     </span>
                 </label>
-
-                <div className="settings__public-link">
-                    <span>Link público</span>
-                    <code>{slug ? publicUrl : 'Preencha o endereço do perfil para gerar o link.'}</code>
-                    <button
-                        className="dashboard-management__secondary"
-                        type="button"
-                        disabled={!slug}
-                        onClick={handleCopy}
-                    >
-                        Copiar link
-                    </button>
-                    {copyFeedback && <small role="status">{copyFeedback}</small>}
-                </div>
 
                 <div className="dashboard-management__actions">
                     <button className="dashboard-management__primary" type="submit" disabled={saving}>

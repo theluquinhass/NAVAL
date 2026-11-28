@@ -21,7 +21,7 @@ afterEach(() => {
 
 async function renderPage() {
     render(<WorkingHours />)
-    return screen.findByLabelText('Aberto', { selector: '#working-day-1' })
+    return screen.findByLabelText('Atende neste dia', { selector: '#working-day-1' })
 }
 
 async function openMondayNineToSix() {

@@ -8,6 +8,8 @@ import {
 import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
 import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
 import { useConfirm } from '../../../components/ui/feedbackContext.js'
+import EmptyState from '../../../components/ui/EmptyState.jsx'
+import Icon from '../../../components/ui/Icon.jsx'
 import '../management.css'
 import './services.css'
 
@@ -131,22 +133,23 @@ export default function Services() {
     return (
         <main className="dashboard-management">
             <header className="dashboard-management__header">
-                <p className="dashboard-eyebrow">Gestão</p>
+                <p className="dashboard-eyebrow">Barbearia</p>
                 <h1>Serviços</h1>
-                <p>Cadastre e atualize os serviços oferecidos pela sua barbearia.</p>
+                <p>O que seus clientes podem agendar: nome, preço e duração de cada serviço aparecem na sua página de agendamento.</p>
             </header>
 
             <div className="services-management__grid">
             <form className="dashboard-management__panel services-management__form" onSubmit={handleSubmit}>
-                <div className="dashboard-management__panel-heading"><h2>{editingId ? 'Editar serviço' : 'Cadastrar serviço'}</h2><p>Informe nome, valor e duração do atendimento.</p></div>
+                <div className="dashboard-management__panel-heading"><h2>{editingId ? 'Editar serviço' : 'Cadastrar serviço'}</h2><p>A duração define quanto tempo o horário fica reservado na agenda.</p></div>
 
-                <label className="dashboard-management__field" htmlFor="service-name">Nome
+                <label className="dashboard-management__field" htmlFor="service-name">Nome do serviço
                 <input
                     id="service-name"
                     name="name"
                     type="text"
                     value={form.name}
                     onChange={handleChange}
+                    placeholder="Ex.: Corte degradê"
                     required
                 />
                 </label>
@@ -157,10 +160,11 @@ export default function Services() {
                     name="description"
                     value={form.description}
                     onChange={handleChange}
+                    placeholder="Ex.: Máquina e tesoura, com acabamento na navalha"
                 />
                 </label>
 
-                <label className="dashboard-management__field" htmlFor="service-price">Preço
+                <label className="dashboard-management__field" htmlFor="service-price">Preço (R$)
                 <input
                     id="service-price"
                     name="price"
@@ -169,11 +173,13 @@ export default function Services() {
                     step="0.01"
                     value={form.price}
                     onChange={handleChange}
+                    inputMode="decimal"
+                    placeholder="35.00"
                     required
                 />
                 </label>
 
-                <label className="dashboard-management__field" htmlFor="service-duration">Duração em minutos
+                <label className="dashboard-management__field" htmlFor="service-duration">Duração (minutos)
                 <input
                     id="service-duration"
                     name="duration"
@@ -182,6 +188,8 @@ export default function Services() {
                     step="1"
                     value={form.duration}
                     onChange={handleChange}
+                    inputMode="numeric"
+                    placeholder="30"
                     required
                 />
                 </label>
@@ -198,7 +206,7 @@ export default function Services() {
             </form>
 
             <section className="dashboard-management__panel services-management__list">
-            <div className="dashboard-management__panel-heading"><h2>Serviços cadastrados</h2><p>Gerencie os itens disponíveis para agendamento.</p></div>
+            <div className="dashboard-management__panel-heading"><h2>Seus serviços</h2><p>{services.length > 0 ? `${services.length} ${services.length === 1 ? 'serviço disponível' : 'serviços disponíveis'} para agendamento online.` : 'Os serviços cadastrados aparecem aqui.'}</p></div>
             {message && <p className="dashboard-management__notice" role="status">{message}</p>}
 
                 {loading ? (
@@ -209,15 +217,17 @@ export default function Services() {
                         <button className="dashboard-management__secondary" type="button" onClick={loadServices}>Tentar novamente</button>
                     </div>
                 ) : services.length === 0 ? (
-                    <p className="dashboard-management__empty">Nenhum serviço cadastrado.</p>
+                    <EmptyState icon="scissors" title="Nenhum serviço cadastrado ainda">
+                        Cadastre seu primeiro serviço no formulário. Sem serviços, seus clientes não conseguem agendar.
+                    </EmptyState>
                 ) : (
                     <ul className="services-management__items">
                         {services.map((service) => (
                             <li className="services-management__item" key={service.id}>
-                                <div className="services-management__item-heading"><h3>{service.name}</h3><span>{formatMoney(service.price)}</span></div>
+                                <div className="services-management__item-heading"><h3>{service.name}</h3><span className="services-management__price">{formatMoney(service.price)}</span></div>
                                 <p>{service.description || 'Sem descrição.'}</p>
-                                <div className="services-management__item-footer"><span>{service.duration} min</span><div className="dashboard-management__actions"><button className="dashboard-management__secondary" type="button" onClick={() => startEditing(service)}>Editar</button>
-                                <button className="dashboard-management__danger" type="button" onClick={() => handleDelete(service)}>Excluir</button></div></div>
+                                <div className="services-management__item-footer"><span className="services-management__duration"><Icon name="clock" />{service.duration} min</span><div className="dashboard-management__actions"><button className="dashboard-management__secondary" type="button" onClick={() => startEditing(service)}><Icon name="edit" />Editar</button>
+                                <button className="dashboard-management__danger" type="button" onClick={() => handleDelete(service)}><Icon name="trash" />Excluir</button></div></div>
                             </li>
                         ))}
                     </ul>

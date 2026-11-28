@@ -20,7 +20,7 @@ export default function WorkingDayFieldset({ day, error, actions }) {
                         checked={day.enabled}
                         onChange={(event) => actions.updateDay(day.day_of_week, { enabled: event.target.checked })}
                     />
-                    <span>Aberto</span>
+                    <span>Atende neste dia</span>
                 </label>
                 <span className="working-hours__day-total">
                     {day.enabled ? formatDuration(dayTotalMinutes(day)) : 'Fechado'}

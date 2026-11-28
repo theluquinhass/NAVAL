@@ -114,9 +114,9 @@ export default function Finance() {
         <main className="dashboard-management finance-page">
             <header className="dashboard-management__header finance-page__header">
                 <div>
-                    <p className="dashboard-eyebrow">Gestão</p>
+                    <p className="dashboard-eyebrow">Barbearia</p>
                     <h1>Financeiro</h1>
-                    <p>Pagamentos manuais, estornos e despesas gerais. Vendas de produtos aparecem apenas como informação e são gerenciadas em Produtos → Financeiro de produtos.</p>
+                    <p>Registre o que entrou (pagamentos), o que saiu (despesas) e devoluções (estornos). Vendas de produtos são registradas em Produtos → Vendas e compras.</p>
                 </div>
             </header>
 
@@ -227,7 +227,7 @@ export default function Finance() {
                         <section className="dashboard-management__panel" aria-labelledby="finance-expenses-title">
                             <div className="dashboard-management__panel-heading">
                                 <h2 id="finance-expenses-title">Despesas</h2>
-                                <p>Lançamentos manuais gerais. Compras de estoque aparecem como informação e são gerenciadas em Produtos → Financeiro de produtos.</p>
+                                <p>Lançamentos manuais gerais. Compras de estoque aparecem como informação e são gerenciadas em Produtos → Vendas e compras.</p>
                             </div>
                             {expenses.length === 0 ? (
                                 <p className="dashboard-management__empty">Nenhuma despesa registrada neste período.</p>

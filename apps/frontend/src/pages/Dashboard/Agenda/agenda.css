@@ -11,7 +11,8 @@
 .agenda-views { display: inline-flex; padding: 3px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
 .agenda-views__option { min-width: 5rem; min-height: 2.4rem; padding: 0 var(--space-4); border: 0; border-radius: calc(var(--radius-md) - 3px); background: transparent; color: var(--color-muted); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); cursor: pointer; }
 .agenda-views__option:hover { color: var(--color-foreground); }
-.agenda-views__option--active { background: var(--color-rail); color: var(--color-rail-foreground); box-shadow: var(--shadow-sm); }
+.agenda-views__option--active,
+.agenda-views__option--active:hover { background: var(--color-rail); color: var(--color-rail-foreground); box-shadow: var(--shadow-sm); }
 
 .dashboard-agenda__title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-5) var(--space-6) 0; }
 .dashboard-agenda__title-row h2 { font-family: var(--font-family-display); font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }

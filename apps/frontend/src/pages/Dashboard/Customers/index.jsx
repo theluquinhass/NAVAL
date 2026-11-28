@@ -7,6 +7,7 @@ import {
 } from '../../../services/customersApi.js'
 import { formatDateTime, getErrorMessage } from '../../../utils/dashboard.js'
 import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
+import Icon from '../../../components/ui/Icon.jsx'
 import '../management.css'
 import './customers.css'
 
@@ -152,12 +153,12 @@ export default function Customers() {
         <main className="dashboard-management customers-page">
             <header className="dashboard-management__header customers-page__header">
                 <div>
-                    <p className="dashboard-eyebrow">Gestão</p>
+                    <p className="dashboard-eyebrow">Atendimento</p>
                     <h1>Clientes</h1>
-                    <p>Organize os contatos e acompanhe o histórico de atendimentos.</p>
+                    <p>Seus clientes com telefone e histórico de atendimentos. Quem agenda pela sua página entra aqui automaticamente.</p>
                 </div>
                 <button className="dashboard-management__primary" type="button" onClick={openCreateForm}>
-                    Novo cliente
+                    <Icon name="plus" />Novo cliente
                 </button>
             </header>
 

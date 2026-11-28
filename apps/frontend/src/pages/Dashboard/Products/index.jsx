@@ -10,6 +10,8 @@ import {
 import { formatMoney, getErrorMessage } from '../../../utils/dashboard.js'
 import { useLatestRequest } from '../../../hooks/useLatestRequest.js'
 import { useConfirm } from '../../../components/ui/feedbackContext.js'
+import EmptyState from '../../../components/ui/EmptyState.jsx'
+import Icon from '../../../components/ui/Icon.jsx'
 import '../management.css'
 import './products.css'
 
@@ -202,7 +204,7 @@ export default function Products() {
             <header className="dashboard-management__header">
                 <p className="dashboard-eyebrow">Produtos</p>
                 <h1>Estoque de produtos</h1>
-                <p>Cadastre itens, acompanhe o saldo e gerencie o catálogo. Entradas, ajustes e vendas são registrados nas movimentações.</p>
+                <p>Cadastre o que você vende e acompanhe o saldo. O estoque muda pelas movimentações: entradas, ajustes e vendas.</p>
             </header>
 
             {message && <p className="dashboard-management__notice" role="status">{message}</p>}
@@ -217,8 +219,8 @@ export default function Products() {
             )}
 
             <div className="products-actions">
-                <button className="dashboard-management__primary" type="button" onClick={() => { setEditingProduct(null); setForm('product') }}>Novo produto</button>
-                <button className="dashboard-management__secondary" type="button" onClick={() => openMovements()} disabled={products.length === 0}>Registrar movimentação</button>
+                <button className="dashboard-management__primary" type="button" onClick={() => { setEditingProduct(null); setForm('product') }}><Icon name="plus" />Novo produto</button>
+                <button className="dashboard-management__secondary" type="button" onClick={() => openMovements()} disabled={products.length === 0}><Icon name="swap" />Registrar movimentação</button>
             </div>
 
             {form === 'product' && (
@@ -239,7 +241,9 @@ export default function Products() {
                         <p>{products.length} produto(s) cadastrado(s). O estoque vem do histórico de movimentações.</p>
                     </div>
                     {products.length === 0 ? (
-                        <p className="dashboard-management__empty">Nenhum produto cadastrado. Comece pelo botão “Novo produto”.</p>
+                        <EmptyState icon="box" title="Nenhum produto cadastrado">
+                            Comece pelo botão “Novo produto”. Depois registre uma entrada para ter saldo em estoque.
+                        </EmptyState>
                     ) : (
                         <div className="products-table-wrap">
                             <table className="products-table">
@@ -260,24 +264,24 @@ export default function Products() {
                                             && product.stock <= product.low_stock_threshold
                                         return (
                                             <tr key={product.id}>
-                                                <td>
+                                                <td data-label="Produto">
                                                     <strong>{product.name}</strong>
                                                     {product.description && <small>{product.description}</small>}
                                                 </td>
-                                                <td>{product.sku || '—'}</td>
-                                                <td>{formatMoney(product.price)}</td>
-                                                <td>{product.cost === null ? '—' : formatMoney(product.cost)}</td>
-                                                <td>
+                                                <td data-label="SKU">{product.sku || '—'}</td>
+                                                <td data-label="Preço">{formatMoney(product.price)}</td>
+                                                <td data-label="Custo">{product.cost === null ? '—' : formatMoney(product.cost)}</td>
+                                                <td data-label="Estoque">
                                                     <span className={lowStock ? 'products-stock products-stock--low' : 'products-stock'}>
                                                         {product.stock}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td data-label="Status">
                                                     <span className={product.is_active ? 'products-status' : 'products-status products-status--inactive'}>
                                                         {product.is_active ? 'Ativo' : 'Inativo'}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td className="products-table__actions">
                                                     <div className="products-actions products-actions--row">
                                                         <button className="dashboard-management__secondary" type="button" disabled={busyId === product.id} onClick={() => { setEditingProduct(product); setForm('product') }}>Editar</button>
                                                         <button className="dashboard-management__secondary" type="button" disabled={busyId === product.id} onClick={() => openMovements(product.id)}>Movimentar</button>

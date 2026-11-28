@@ -192,9 +192,9 @@ export default function WorkingHours() {
     return (
         <main className="dashboard-management working-hours-page">
             <header className="dashboard-management__header">
-                <p className="dashboard-eyebrow">Gestão</p>
-                <h1>Horários de funcionamento</h1>
-                <p>Defina em quais dias e horários sua barbearia atende.</p>
+                <p className="dashboard-eyebrow">Barbearia</p>
+                <h1>Horários de atendimento</h1>
+                <p>Defina os dias e horários em que você atende. Sua página de agendamento só oferece horários dentro desses períodos.</p>
             </header>
 
             {loading ? (

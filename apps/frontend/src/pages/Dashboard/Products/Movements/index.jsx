@@ -115,7 +115,7 @@ function MovementForm({ products, initialProductId, onCancel, onSaved }) {
             {form.movementType === 'entry' && (
                 <p className="products-form__wide products-movement-hint">
                     {estimatedExpense ? (
-                        <>Despesa gerada no Financeiro de produtos: <strong>{formatMoney(estimatedExpense)}</strong> ({form.quantity} x {formatMoney(unitCost)}).</>
+                        <>Despesa gerada em Vendas e compras: <strong>{formatMoney(estimatedExpense)}</strong> ({form.quantity} x {formatMoney(unitCost)}).</>
                     ) : (
                         <>Defina o custo do produto para registrar a entrada como despesa.</>
                     )}
