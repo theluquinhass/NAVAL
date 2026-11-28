@@ -10,39 +10,86 @@ import {
     periodBounds,
     TIME_ZONE
 } from '../../utils/dashboard.js'
+import Icon from '../../components/ui/Icon.jsx'
+import PageHeader from '../../components/ui/PageHeader.jsx'
+import EmptyState from '../../components/ui/EmptyState.jsx'
+import ShareBookingLink from '../../components/ShareBookingLink.jsx'
+import { hasSharedBookingLink } from '../../components/shareBookingLinkState.js'
+import OnboardingChecklist from './OnboardingChecklist.jsx'
 import './dashboard.css'
 
-const icons = {
-    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
-    check: <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></>,
-    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
-    close: <><circle cx="12" cy="12" r="9" /><path d="m9 9 6 6m0-6-6 6" /></>,
-    wallet: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18m-13 5h3" /></>,
-    arrow: <><path d="M5 12h14m-6-6 6 6-6 6" /></>
-}
+const UPCOMING_LIMIT = 5
 
-function Icon({ name }) {
-    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>
-}
-
-function partsInFortaleza(value) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: false
-    }).formatToParts(new Date(value))
-    return Object.fromEntries(parts.map(({ type, value: part }) => [type, part]))
+function hourInFortaleza(value) {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, hour: '2-digit', hour12: false }).formatToParts(value)
+    return Number(parts.find((part) => part.type === 'hour')?.value ?? 12)
 }
 
 function formatDate(value) {
     return new Intl.DateTimeFormat('pt-BR', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: TIME_ZONE
-    }).format(new Date(value))
+        weekday: 'long', day: 'numeric', month: 'long', timeZone: TIME_ZONE
+    }).format(value)
 }
 
 function formatTime(value) {
     return new Intl.DateTimeFormat('pt-BR', {
         hour: '2-digit', minute: '2-digit', timeZone: TIME_ZONE
     }).format(new Date(value))
+}
+
+function greetingFor(hour) {
+    if (hour < 12) return 'Bom dia'
+    if (hour < 18) return 'Boa tarde'
+    return 'Boa noite'
+}
+
+function TodayMetrics({ appointments, confirmed, cancelled, financeSummary }) {
+    const metrics = [
+        { key: 'today', label: 'Agendamentos hoje', value: appointments.length, icon: 'calendar' },
+        { key: 'confirmed', label: 'Confirmados', value: confirmed.length, icon: 'check' },
+        { key: 'cancelled', label: 'Cancelados', value: cancelled.length, icon: 'closeCircle' },
+        { key: 'revenue', label: 'Recebido hoje', value: financeSummary ? formatMoney(financeSummary.revenue) : '—', icon: 'wallet' }
+    ]
+    return (
+        <section className="dashboard-metrics" aria-label="Indicadores de hoje">
+            {metrics.map((metric) => (
+                <article className={`dashboard-metric dashboard-metric--${metric.key}`} key={metric.key}>
+                    <span className="dashboard-metric__icon"><Icon name={metric.icon} /></span>
+                    <p className="dashboard-metric__label">{metric.label}</p>
+                    <p className="dashboard-metric__value">{metric.value}</p>
+                </article>
+            ))}
+        </section>
+    )
+}
+
+function UpcomingAppointments({ upcoming }) {
+    return (
+        <section className="dashboard-panel" aria-labelledby="appointments-title">
+            <div className="dashboard-panel__heading">
+                <h2 id="appointments-title">Próximos clientes de hoje</h2>
+                <Link className="ui-button ui-button--ghost" to="/dashboard/agenda">Ver agenda<Icon name="arrowRight" /></Link>
+            </div>
+            {upcoming.length === 0 ? (
+                <EmptyState icon="calendar" title="Nenhum cliente marcado para o resto do dia">
+                    Quando alguém agendar pela sua página, o horário aparece aqui.
+                </EmptyState>
+            ) : (
+                <ol className="dashboard-appointment-list">
+                    {upcoming.slice(0, UPCOMING_LIMIT).map((appointment) => (
+                        <li className="dashboard-appointment" key={appointment.id}>
+                            <time className="dashboard-appointment__time" dateTime={appointment.starts_at}>{formatTime(appointment.starts_at)}</time>
+                            <div className="dashboard-appointment__person">
+                                <strong>{appointment.customer_name}</strong>
+                                <span>{appointment.service?.name || 'Serviço não informado'}</span>
+                            </div>
+                            <span className="ui-badge ui-badge--success">Confirmado</span>
+                        </li>
+                    ))}
+                </ol>
+            )}
+        </section>
+    )
 }
 
 export default function Dashboard() {
@@ -53,7 +100,7 @@ export default function Dashboard() {
     const [loadedKey, setLoadedKey] = useState('')
     const [refreshKey, setRefreshKey] = useState(0)
     const [error, setError] = useState('')
-
+    const [linkShared, setLinkShared] = useState(() => hasSharedBookingLink(profile?.slug))
     const today = fortalezaToday()
     const { from, to } = periodBounds(today, today)
     const requestKey = `${from}|${to}|${refreshKey}`
@@ -77,102 +124,46 @@ export default function Dashboard() {
         return () => { active = false }
     }, [from, to, requestKey])
 
-    if (authLoading) return <p className="dashboard-loading" role="status">Carregando dashboard...</p>
+    if (authLoading) return <p className="dashboard-loading" role="status">Carregando painel...</p>
 
-    const { hour } = partsInFortaleza(new Date())
-    const profileName = profile?.barberName || profile?.name || 'Barbeiro'
-    const barbershopName = profile?.name || 'sua barbearia'
-    const greeting = Number(hour) < 12 ? 'Bom dia' : Number(hour) < 18 ? 'Boa tarde' : 'Boa noite'
+    const now = new Date()
+    const firstName = (profile?.barberName || profile?.name || '').split(' ')[0] || 'barbeiro'
     const confirmed = appointments.filter((appointment) => appointment.status === 'confirmed')
     const cancelled = appointments.filter((appointment) => appointment.status === 'cancelled')
     const upcoming = confirmed
-        .filter((appointment) => new Date(appointment.starts_at).getTime() >= new Date())
+        .filter((appointment) => new Date(appointment.starts_at).getTime() >= now.getTime())
         .sort((left, right) => new Date(left.starts_at) - new Date(right.starts_at))
-    const revenue = financeSummary ? formatMoney(financeSummary.revenue) : '—'
-
-    const metrics = [
-        { key: 'today', label: 'Agendamentos de hoje', value: String(appointments.length).padStart(2, '0'), detail: 'Na agenda de hoje', icon: 'calendar' },
-        { key: 'confirmed', label: 'Confirmados', value: String(confirmed.length).padStart(2, '0'), detail: 'Horários reservados', icon: 'check' },
-        { key: 'cancelled', label: 'Cancelamentos', value: String(cancelled.length).padStart(2, '0'), detail: 'Neste dia', icon: 'close' },
-        { key: 'revenue', label: 'Receita recebida hoje', value: revenue, detail: financeSummary ? 'Pagamentos registrados hoje' : 'Resumo indisponível', icon: 'wallet' }
-    ]
 
     return (
         <main className="dashboard-home">
-            <header className="dashboard-welcome">
-                <div>
-                    <p className="dashboard-eyebrow">{formatDate(new Date())}</p>
-                    <h1>{greeting}, {profileName}</h1>
-                    <p className="dashboard-welcome__copy">Aqui está o resumo do movimento da {barbershopName} hoje.</p>
-                </div>
-            </header>
+            <PageHeader
+                eyebrow={formatDate(now)}
+                title={`${greetingFor(hourInFortaleza(now))}, ${firstName}`}
+                description={`Este é o resumo de hoje da ${profile?.name || 'sua barbearia'}.`}
+                actions={(
+                    <>
+                        <Link className="ui-button ui-button--primary" to="/dashboard/agenda?novo=1"><Icon name="plus" />Novo agendamento</Link>
+                        <Link className="ui-button ui-button--secondary" to="/dashboard/finance"><Icon name="wallet" />Registrar pagamento</Link>
+                    </>
+                )}
+            />
+
+            <OnboardingChecklist linkShared={linkShared} />
 
             {loading ? (
-                <p className="dashboard-loading" role="status">Carregando indicadores de hoje...</p>
+                <p className="dashboard-loading" role="status">Carregando o movimento de hoje...</p>
             ) : error ? (
                 <div className="dashboard-panel dashboard-error">
                     <p role="alert">{error}</p>
-                    <button className="dashboard-retry" type="button" onClick={() => setRefreshKey((current) => current + 1)}>Tentar novamente</button>
+                    <button className="ui-button ui-button--secondary" type="button" onClick={() => setRefreshKey((current) => current + 1)}>Tentar novamente</button>
                 </div>
             ) : (
-                <>
-                    <section className="dashboard-metrics" aria-label="Indicadores de hoje">
-                        {metrics.map((metric) => (
-                            <article className="dashboard-metric" key={metric.key}>
-                                <div className={`dashboard-metric__icon dashboard-metric__icon--${metric.key}`}><Icon name={metric.icon} /></div>
-                                <p className="dashboard-metric__label">{metric.label}</p>
-                                <p className="dashboard-metric__value">{metric.value}</p>
-                                <p className="dashboard-metric__detail">{metric.detail}</p>
-                            </article>
-                        ))}
-                    </section>
-
-                    <div className="dashboard-overview-grid">
-                        <section className="dashboard-panel dashboard-appointments" aria-labelledby="appointments-title">
-                            <div className="dashboard-panel__heading">
-                                <div><p className="dashboard-eyebrow">A seguir</p><h2 id="appointments-title">Próximos agendamentos</h2></div>
-                            </div>
-                            {upcoming.length === 0 ? (
-                                <p className="dashboard-appointment-empty">Nenhum agendamento futuro para hoje.</p>
-                            ) : (
-                                <div className="dashboard-appointment-list">
-                                    {upcoming.slice(0, 5).map((appointment) => (
-                                        <article className="dashboard-appointment" key={appointment.id}>
-                                            <time className="dashboard-appointment__time">{formatTime(appointment.starts_at)}</time>
-                                            <div className="dashboard-appointment__person"><strong>{appointment.customer_name}</strong><span>{appointment.service?.name || 'Serviço não informado'}</span></div>
-                                            <span className="dashboard-status">Confirmado</span>
-                                        </article>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-
-                        <section className="dashboard-panel dashboard-progress" aria-labelledby="progress-title">
-                            <div className="dashboard-panel__heading">
-                                <div><p className="dashboard-eyebrow">Hoje</p><h2 id="progress-title">Situação da agenda</h2></div>
-                            </div>
-                            {appointments.length === 0 ? (
-                                <p className="dashboard-appointment-empty">Ainda não há agendamentos registrados hoje.</p>
-                            ) : (
-                                <>
-                                    <div className="dashboard-progress__summary"><strong>{confirmed.length} de {appointments.length}</strong><span>agendamentos confirmados</span></div>
-                                    <div className="dashboard-progress__track" role="img" aria-label={`${confirmed.length} de ${appointments.length} agendamentos confirmados`}>
-                                        <span style={{ width: `${(confirmed.length / appointments.length) * 100}%` }} />
-                                    </div>
-                                    <div className="dashboard-progress__legend">
-                                        <span><i className="dashboard-progress__dot dashboard-progress__dot--done" />Confirmados <strong>{confirmed.length}</strong></span>
-                                        <span><i className="dashboard-progress__dot dashboard-progress__dot--pending" />Cancelados <strong>{cancelled.length}</strong></span>
-                                    </div>
-                                </>
-                            )}
-                        </section>
-                    </div>
-                </>
+                <TodayMetrics appointments={appointments} confirmed={confirmed} cancelled={cancelled} financeSummary={financeSummary} />
             )}
 
-            <div className="dashboard-agenda-access">
-                <span>Precisa ver todos os horários do dia?</span>
-                <Link to="/dashboard/agenda">Agenda completa <Icon name="arrow" /></Link>
+            <div className="dashboard-overview-grid">
+                {!loading && !error ? <UpcomingAppointments upcoming={upcoming} /> : <div />}
+                <ShareBookingLink slug={profile?.slug} barbershopName={profile?.name} onShared={() => setLinkShared(true)} />
             </div>
         </main>
     )
