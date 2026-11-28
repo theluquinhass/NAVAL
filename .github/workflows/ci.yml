@@ -43,3 +43,5 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+      # Smoke E2E of the public booking flow (mocked API, runner's Google Chrome).
+      - run: npm run test:e2e

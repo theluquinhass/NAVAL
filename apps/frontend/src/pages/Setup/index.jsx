@@ -43,8 +43,9 @@ export default function Setup() {
                     <span className="auth-card__eyebrow">NAVAL</span>
                 </div>
 
+                <p className="auth-card__step">Último passo do cadastro</p>
                 <h1>Configure sua barbearia</h1>
-                <p className="auth-card__subtitle">Esses dados aparecem na página pública onde seus clientes vão agendar.</p>
+                <p className="auth-card__subtitle">Esses dados aparecem na página onde seus clientes vão agendar. Leva menos de um minuto.</p>
 
                 <form className="auth-form" onSubmit={handleSubmit}>
                     {error && <p className="auth-feedback auth-feedback--error" role="alert">{error}</p>}
@@ -94,7 +95,7 @@ export default function Setup() {
                     </div>
 
                     <div className="auth-field">
-                        <label htmlFor="setup-slug">Endereço do perfil</label>
+                        <label htmlFor="setup-slug">Endereço da sua página</label>
                         <input
                             id="setup-slug"
                             type="text"
@@ -102,12 +103,15 @@ export default function Setup() {
                             onChange={(event) => { setSlug(event.target.value); setError('') }}
                             onBlur={() => setSlug(normalizeSlug(slug))}
                             placeholder="barbearia-do-ze"
+                            aria-describedby="setup-slug-hint setup-slug-preview"
+                            autoCapitalize="none"
                             required
                         />
+                        <small id="setup-slug-hint" className="auth-field__hint">Preenchido a partir do nome. Use letras minúsculas, números e hífens.</small>
                     </div>
 
-                    <div className="auth-preview">
-                        <span>Link público da sua barbearia</span>
+                    <div className="auth-preview" id="setup-slug-preview">
+                        <span>Seus clientes vão agendar por este link:</span>
                         <code>{publicUrl}</code>
                     </div>
 
@@ -141,7 +145,7 @@ export default function Setup() {
                     </fieldset>
 
                     <button className="auth-submit" type="submit" disabled={saving}>
-                        {saving ? 'Salvando...' : 'Salvar perfil'}
+                        {saving ? 'Salvando...' : 'Criar minha barbearia'}
                     </button>
                 </form>
 

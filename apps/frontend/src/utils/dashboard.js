@@ -40,6 +40,13 @@ export function fortalezaToday(value = new Date()) {
     return `${values.year}-${values.month}-${values.day}`
 }
 
+// Adds whole days to a 'YYYY-MM-DD' business date (noon anchor avoids DST/offset edges).
+export function addDays(dateValue, amount) {
+    const date = new Date(`${dateValue}T12:00:00-03:00`)
+    date.setUTCDate(date.getUTCDate() + amount)
+    return fortalezaToday(date)
+}
+
 export function fortalezaInputValue(value = new Date()) {
     const parts = new Intl.DateTimeFormat('sv-SE', {
         timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',

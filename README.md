@@ -257,6 +257,7 @@ cd apps/frontend
 npm run lint
 npm run test
 npm run build
+npm run test:e2e   # Playwright: fluxo de agendamento público (API simulada, usa o Google Chrome instalado)
 ```
 
 O workflow `.github/workflows/ci.yml` executa exatamente esses comandos com Node 22 em `push` e `pull_request`, usando `npm ci` e cache de dependências.

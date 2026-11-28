@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { ProfileContext } from '../../../contexts/profileContext.js'
+import FeedbackProvider from '../../../components/ui/FeedbackProvider.jsx'
+import { fortalezaToday } from '../../../utils/dashboard.js'
+import { getWeekDays, getWeekRange } from './agendaDateTime.js'
 
 vi.mock('../../../services/schedulingApi.js', () => ({
     getAppointments: vi.fn(),
@@ -32,11 +36,15 @@ afterEach(() => {
     vi.clearAllMocks()
 })
 
-function renderAgenda() {
+function renderAgenda(path = '/dashboard/agenda') {
     return render(
-        <ProfileContext.Provider value={{ profile: { slug: 'barbearia-teste' } }}>
-            <Agenda />
-        </ProfileContext.Provider>
+        <MemoryRouter initialEntries={[path]}>
+            <FeedbackProvider>
+                <ProfileContext.Provider value={{ profile: { slug: 'barbearia-teste' } }}>
+                    <Agenda />
+                </ProfileContext.Provider>
+            </FeedbackProvider>
+        </MemoryRouter>
     )
 }
 
@@ -83,5 +91,36 @@ describe('Agenda – novo agendamento', () => {
         }))
         expect(await screen.findByText('Agendamento criado com sucesso.')).toBeTruthy()
         expect(document.querySelector('dialog').open).toBe(false)
+    })
+
+    it('abre a modal direto quando vem do atalho do painel (?novo=1)', async () => {
+        renderAgenda('/dashboard/agenda?novo=1')
+
+        expect(await screen.findByLabelText('Nome do cliente')).toBeTruthy()
+        expect(document.querySelector('dialog').open).toBe(true)
+    })
+})
+
+describe('Agenda – visão semanal', () => {
+    it('busca a semana inteira e agrupa os atendimentos por dia', async () => {
+        const week = getWeekDays(fortalezaToday())
+        scheduling.getAppointments.mockResolvedValue([
+            { id: 'a1', customer_name: 'Ana', status: 'confirmed', starts_at: `${week[0]}T12:00:00.000Z`, ends_at: `${week[0]}T12:30:00.000Z` },
+            { id: 'a2', customer_name: 'Bruno', status: 'cancelled', starts_at: `${week[2]}T18:00:00.000Z`, ends_at: `${week[2]}T18:30:00.000Z` }
+        ])
+        renderAgenda()
+        await screen.findByText('Ana')
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', { name: 'Semana' }))
+        })
+
+        expect(scheduling.getAppointments.mock.calls.at(-1)).toEqual([
+            getWeekRange(fortalezaToday()).from,
+            getWeekRange(fortalezaToday()).to
+        ])
+        expect(await screen.findByText('Bruno')).toBeTruthy()
+        expect(screen.getByText('Ana')).toBeTruthy()
+        expect(screen.getAllByText('Livre')).toHaveLength(5)
     })
 })

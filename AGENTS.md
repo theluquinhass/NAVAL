@@ -68,6 +68,7 @@ Rode o que corresponde ao que você mudou (são os mesmos comandos do CI):
 ```bash
 cd apps/backend && npm test                                       # node --experimental-test-module-mocks --test
 cd apps/frontend && npm run lint && npm run test && npm run build # ESLint, Vitest, build Vite
+cd apps/frontend && npm run test:e2e                              # Playwright (e2e/, API mockada via page.route, Chrome instalado)
 supabase/run_rls_tests.sh                            # ao mexer em migrations, policies, RPCs ou triggers (requer Docker)
 ```
 
